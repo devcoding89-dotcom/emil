@@ -9,6 +9,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  deleteUser,
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -28,15 +29,25 @@ export async function signUp(auth: Auth, data: any) {
     email,
   };
   
-  setDoc(userDocRef, profileData)
-    .catch((serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'create',
-        requestResourceData: profileData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
+  try {
+    await setDoc(userDocRef, profileData, { merge: true });
+  } catch (firestoreError) {
+    // If saving the profile fails, roll back the auth user creation.
+    const permissionError = new FirestorePermissionError({
+      path: userDocRef.path,
+      operation: 'write',
+      requestResourceData: profileData,
     });
+    errorEmitter.emit('permission-error', permissionError);
+    
+    try {
+      await deleteUser(user);
+    } catch (deleteError) {
+      console.error("Failed to roll back user creation after profile save failure:", deleteError);
+    }
+
+    throw new Error('Failed to save user profile. Your account was not created.');
+  }
 
   return user;
 }
@@ -59,15 +70,20 @@ export async function signInWithGoogle(auth: Auth) {
     email: user.email,
   };
   
-  setDoc(userDocRef, profileData, { merge: true })
-    .catch((serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'create',
-        requestResourceData: profileData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
+  try {
+    await setDoc(userDocRef, profileData, { merge: true });
+  } catch (firestoreError) {
+    const permissionError = new FirestorePermissionError({
+      path: userDocRef.path,
+      operation: 'write',
+      requestResourceData: profileData,
     });
+    errorEmitter.emit('permission-error', permissionError);
+
+    await firebaseSignOut(auth);
+    
+    throw new Error('Failed to save user profile. Please try again.');
+  }
 
   return user;
 }
