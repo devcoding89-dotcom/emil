@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const AiEmailExtractionInputSchema = z.object({
   text: z.string().describe('The text block from which to extract email addresses.'),
