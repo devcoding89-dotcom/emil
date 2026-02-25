@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/firebase";
 import { signUp } from "@/lib/firebase/auth";
 import { AuthCard } from "./auth-card";
@@ -33,8 +32,8 @@ type SignupFormData = z.infer<typeof signupSchema>;
 export function SignupForm() {
   const { toast } = useToast();
   const auth = useAuth();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -49,7 +48,7 @@ export function SignupForm() {
     setIsLoading(true);
     try {
       await signUp(auth, values);
-      router.push("/");
+      setIsSubmitted(true);
     } catch (error: any) {
       console.error(error);
       let description = "An unexpected error occurred. Please try again.";
@@ -68,64 +67,81 @@ export function SignupForm() {
 
   return (
     <AuthCard
-      title="Create an account"
-      description="Enter your information to create a new account"
+      title={isSubmitted ? "Check your email" : "Create an account"}
+      description={isSubmitted ? "We've sent a verification link to your email address." : "Enter your information to create a new account"}
       footerContent={
         <div className="text-center text-sm text-muted-foreground w-full">
-            Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+          {isSubmitted ? (
+            <>
+              Verified your email?{' '}
+              <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
                 Log In
-            </Link>
+              </Link>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+                  Log In
+              </Link>
+            </>
+          )}
         </div>
       }
     >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="displayName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input type="email" placeholder="name@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Account
-          </Button>
-        </form>
-      </Form>
+      {isSubmitted ? (
+        <div className="py-4 text-center text-sm">
+          Please click the link in the email to finish signing up. You may need to check your spam folder.
+        </div>
+      ) : (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="name@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Account
+            </Button>
+          </form>
+        </Form>
+      )}
     </AuthCard>
   );
 }

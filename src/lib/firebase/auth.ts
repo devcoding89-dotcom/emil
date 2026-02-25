@@ -10,6 +10,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   deleteUser,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -20,6 +21,7 @@ export async function signUp(auth: Auth, data: any) {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
 
+  await sendEmailVerification(user);
   await updateProfile(user, { displayName });
 
   const db = getFirestore(auth.app);
