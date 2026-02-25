@@ -1,6 +1,9 @@
 'use client';
 
+import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { useRedirectIfAuthenticated } from "@/hooks/use-redirect-if-authenticated";
+
 export default function ForgotPasswordPage() {
-  // This page has been disabled.
-  return null;
+  useRedirectIfAuthenticated();
+  return <ForgotPasswordForm />;
 }

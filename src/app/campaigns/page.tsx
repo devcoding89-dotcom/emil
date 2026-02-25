@@ -7,8 +7,10 @@ import PageHeader from "@/components/page-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import type { Campaign } from "@/lib/types";
 import { CampaignCard } from "./components/campaign-card";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 export default function CampaignsPage() {
+  useAuthGuard();
   const [campaigns, setCampaigns] = useLocalStorage<Campaign[]>("campaigns", []);
 
   const handleDelete = (id: string) => {

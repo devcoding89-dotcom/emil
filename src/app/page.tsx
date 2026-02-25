@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Mail, Rocket } from "lucide-react";
 import type { ContactList, Campaign } from "@/lib/types";
 import PageHeader from "@/components/page-header";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 export default function DashboardPage() {
+  useAuthGuard();
   const [totalContacts, setTotalContacts] = useState(0);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [totalLists, setTotalLists] = useState(0);

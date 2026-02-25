@@ -1,6 +1,12 @@
 'use client';
 
+import { LoginForm } from "@/components/auth/login-form";
+import { useRedirectIfAuthenticated } from "@/hooks/use-redirect-if-authenticated";
+
 export default function LoginPage() {
-  // This page has been disabled.
-  return null;
+  useRedirectIfAuthenticated();
+
+  return (
+    <LoginForm />
+  );
 }
