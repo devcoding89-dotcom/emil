@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlusCircle, Upload } from "lucide-react";
@@ -17,12 +17,21 @@ import { validateEmailAction } from "@/lib/actions";
 export default function ContactsPage() {
   const { toast } = useToast();
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
-  const [selectedListId, setSelectedListId] = useState<string | null>(
-    contactLists.length > 0 ? contactLists[0].id : null
-  );
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+
+  useEffect(() => {
+    // If no list is selected but lists exist, select the first one.
+    if (!selectedListId && contactLists.length > 0) {
+      setSelectedListId(contactLists[0].id);
+    }
+    // If the selected list was deleted, select a new one.
+    else if (selectedListId && !contactLists.some((list) => list.id === selectedListId)) {
+      setSelectedListId(contactLists.length > 0 ? contactLists[0].id : null);
+    }
+  }, [contactLists, selectedListId]);
 
   const selectedList = contactLists.find((list) => list.id === selectedListId);
 
@@ -38,11 +47,7 @@ export default function ContactsPage() {
   };
 
   const handleDeleteList = (id: string) => {
-    const updatedLists = contactLists.filter(list => list.id !== id);
-    setContactLists(updatedLists);
-    if (selectedListId === id) {
-      setSelectedListId(updatedLists.length > 0 ? updatedLists[0].id : null);
-    }
+    setContactLists(contactLists.filter(list => list.id !== id));
   };
   
   const handleAddContact = (contact: Omit<Contact, "id">) => {
