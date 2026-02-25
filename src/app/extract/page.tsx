@@ -8,6 +8,7 @@ import PageHeader from "@/components/page-header";
 import { extractEmailsAction } from "@/lib/actions";
 import { Loader2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 type ExtractedState = {
   emails?: string[];
@@ -15,6 +16,7 @@ type ExtractedState = {
 } | null;
 
 export default function ExtractPage() {
+  useAuthGuard();
   const { toast } = useToast();
   const [text, setText] = useState("");
   const [state, formAction, isPending] = useActionState<ExtractedState, FormData>(
