@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { UserNav } from "./user-nav";
 
 const navLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -63,7 +62,6 @@ export function Sidebar() {
           ))}
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-          <UserNav />
           <Tooltip>
             <TooltipTrigger asChild>
               <Link

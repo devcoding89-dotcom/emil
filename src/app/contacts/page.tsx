@@ -12,10 +12,8 @@ import { ContactListControls } from "./components/contact-list-controls";
 import { ContactsTable } from "./components/contacts-table";
 import { ContactForm } from "./components/contact-form";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 export default function ContactsPage() {
-  useAuthGuard();
   const { toast } = useToast();
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
   const [selectedListId, setSelectedListId] = useState<string | null>(

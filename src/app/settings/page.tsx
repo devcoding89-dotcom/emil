@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import PageHeader from "@/components/page-header";
 import type { SmtpConfig } from "@/lib/types";
 import { Switch } from "@/components/ui/switch";
-import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 const smtpSchema = z.object({
   host: z.string().min(1, "Host is required"),
@@ -39,7 +38,6 @@ const defaultSmtpConfig: SmtpConfig = {
 };
 
 export default function SettingsPage() {
-  useAuthGuard();
   const [smtpConfig, setSmtpConfig] = useLocalStorage<SmtpConfig>(
     "smtp-config",
     defaultSmtpConfig

@@ -1,18 +1,9 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import React from 'react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const authPages = ['/login', '/signup', '/forgot-password'];
-  const isAuthPage = authPages.includes(pathname);
-
-  if (isAuthPage) {
-    return <>{children}</>;
-  }
-
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Sidebar />
