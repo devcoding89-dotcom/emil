@@ -22,7 +22,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { Contact } from "@/lib/types";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { validateEmailAction } from "@/lib/actions";
+import { Loader2 } from "lucide-react";
 
 const contactSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -47,6 +49,7 @@ export function ContactForm({
   onSave,
   contact,
 }: ContactFormProps) {
+  const [isSaving, setIsSaving] = useState(false);
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
@@ -59,25 +62,40 @@ export function ContactForm({
   });
   
   useEffect(() => {
-    if (contact) {
-      form.reset(contact);
+    if (isOpen) {
+      if (contact) {
+        form.reset(contact);
+      } else {
+        form.reset({
+          firstName: "",
+          lastName: "",
+          email: "",
+          company: "",
+          position: "",
+        });
+      }
     } else {
-      form.reset({
-        firstName: "",
-        lastName: "",
-        email: "",
-        company: "",
-        position: "",
-      });
+      // Reset form state when dialog is closed
+      setIsSaving(false);
+      form.clearErrors();
     }
   }, [contact, form, isOpen]);
 
 
-  function onSubmit(values: ContactFormData) {
-    if (contact) {
-      onSave({ ...contact, ...values });
-    } else {
-      onSave(values);
+  async function onSubmit(values: ContactFormData) {
+    setIsSaving(true);
+    form.clearErrors("email");
+    try {
+      const validation = await validateEmailAction(values.email);
+      if (!validation.isValid) {
+        form.setError("email", { type: "manual", message: `Email validation failed: ${validation.reason}` });
+        return;
+      }
+      
+      const contactData = contact ? { ...contact, ...values } : values;
+      onSave({ ...contactData, isValid: true });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -160,7 +178,10 @@ export function ContactForm({
               )}
             />
             <DialogFooter>
-              <Button type="submit">Save Contact</Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Contact
+              </Button>
             </DialogFooter>
           </form>
         </Form>

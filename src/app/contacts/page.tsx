@@ -12,6 +12,7 @@ import { ContactListControls } from "./components/contact-list-controls";
 import { ContactsTable } from "./components/contacts-table";
 import { ContactForm } from "./components/contact-form";
 import { useToast } from "@/hooks/use-toast";
+import { validateEmailAction } from "@/lib/actions";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -78,7 +79,7 @@ export default function ContactsPage() {
     setContactLists(updatedLists);
   };
 
-  const handleImportCSV = (file: File) => {
+  const handleImportCSV = async (file: File) => {
     if (!selectedListId) {
       toast({
         variant: "destructive",
@@ -87,30 +88,108 @@ export default function ContactsPage() {
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-      const headers = lines[0].split(',').map(h => h.trim());
-      const contacts: Contact[] = lines.slice(1).map(line => {
-        const values = line.split(',');
-        const contactData: any = { id: crypto.randomUUID() };
-        headers.forEach((header, index) => {
-          contactData[header] = values[index]?.trim() || '';
-        });
-        return contactData;
-      });
+    
+    const { id: toastId } = toast({
+      title: "Importing contacts...",
+      description: "Please wait while we validate and import your contacts. This may take a moment."
+    });
 
-      const updatedLists = contactLists.map(list => 
-        list.id === selectedListId ? { ...list, contacts: [...list.contacts, ...contacts] } : list
-      );
-      setContactLists(updatedLists);
-      toast({
-        title: "Import successful",
-        description: `${contacts.length} contacts have been added.`
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+      
+      if (lines.length <= 1) {
+          toast({
+              id: toastId,
+              variant: "destructive",
+              title: "Import Failed",
+              description: "CSV file is empty or contains only headers.",
+          });
+          return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
+      
+      const headerMap: { [key: string]: number } = {};
+      const contactKeys = ['email', 'firstname', 'first name', 'lastname', 'last name', 'company', 'position'];
+      headers.forEach((h, i) => {
+          if (contactKeys.includes(h)) {
+              if (h === 'first name') headerMap['firstname'] = i;
+              else if (h === 'last name') headerMap['lastname'] = i;
+              else headerMap[h] = i;
+          }
       });
-    };
-    reader.readAsText(file);
+      
+      if (headerMap['email'] === undefined) {
+          toast({
+              id: toastId,
+              variant: "destructive",
+              title: "Import Failed",
+              description: "CSV file must contain an 'email' column header.",
+          });
+          return;
+      }
+
+      const validContacts: Contact[] = [];
+      const invalidDetails: { email: string, reason: string }[] = [];
+      const contactRows = lines.slice(1);
+
+      for (const line of contactRows) {
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        const email = values[headerMap['email']];
+        
+        if (!email) continue;
+        
+        const { isValid, reason } = await validateEmailAction(email);
+        
+        if (isValid) {
+          const contactData: Contact = {
+              id: crypto.randomUUID(),
+              email: email,
+              firstName: values[headerMap['firstname']] || '',
+              lastName: values[headerMap['lastname']] || '',
+              company: values[headerMap['company']] || '',
+              position: values[headerMap['position']] || '',
+              isValid: true,
+          };
+          validContacts.push(contactData);
+        } else {
+          invalidDetails.push({ email, reason });
+        }
+      }
+      
+      if (validContacts.length > 0) {
+          const updatedLists = contactLists.map(list => 
+              list.id === selectedListId ? { ...list, contacts: [...list.contacts, ...validContacts] } : list
+          );
+          setContactLists(updatedLists);
+      }
+      
+      let description = `${validContacts.length} contacts were successfully imported.`;
+      if (invalidDetails.length > 0) {
+          description += ` ${invalidDetails.length} contacts failed validation and were skipped.`;
+      }
+
+      toast({
+          id: toastId,
+          title: "Import Complete",
+          description: description,
+      });
+    } catch (error) {
+      toast({
+        id: toastId,
+        variant: 'destructive',
+        title: 'Import Error',
+        description: 'An unexpected error occurred during file processing.'
+      })
+    }
+  };
+  
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImportCSV(e.target.files[0]);
+      e.target.value = ""; // Allow re-uploading the same file
+    }
   };
 
   return (
@@ -124,7 +203,7 @@ export default function ContactsPage() {
              <label htmlFor="csv-upload">
                <Upload className="mr-2 h-4 w-4" />
                Import CSV
-               <input id="csv-upload" type="file" accept=".csv" className="sr-only" onChange={(e) => e.target.files && handleImportCSV(e.target.files[0])} />
+               <input id="csv-upload" type="file" accept=".csv,.txt" className="sr-only" onChange={onFileChange} />
              </label>
            </Button>
           <Button

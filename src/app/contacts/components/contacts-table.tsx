@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, CheckCircle2 } from "lucide-react";
 import type { Contact } from "@/lib/types";
 
 import {
@@ -61,7 +61,12 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
       <TableBody>
         {contacts.map((contact) => (
           <TableRow key={contact.id}>
-            <TableCell className="font-medium">{contact.email}</TableCell>
+            <TableCell className="font-medium">
+              <div className="flex items-center gap-2">
+                {contact.email}
+                {contact.isValid && <CheckCircle2 className="h-4 w-4 text-green-500" title="Email validated" />}
+              </div>
+              </TableCell>
             <TableCell>{contact.firstName}</TableCell>
             <TableCell>{contact.lastName}</TableCell>
             <TableCell>{contact.company}</TableCell>

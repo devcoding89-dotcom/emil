@@ -5,6 +5,7 @@ export interface Contact {
   email: string;
   company: string;
   position: string;
+  isValid?: boolean;
 }
 
 export interface ContactList {
