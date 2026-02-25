@@ -10,9 +10,7 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
-import { initializeFirebase } from './index';
 import FirebaseErrorListener from '@/components/FirebaseErrorListener';
-import { firebaseConfig } from './config';
 
 export interface FirebaseContextValue {
   firebaseApp: FirebaseApp | null;
@@ -53,15 +51,3 @@ export const useFirebase = () => {
 export const useFirebaseApp = () => useFirebase().firebaseApp;
 export const useAuth = () => useFirebase().auth;
 export const useFirestore = () => useFirebase().firestore;
-
-// The following is a hack to make the Firebase app available on the server.
-let firebaseApp: FirebaseApp | null = null;
-export function getFirebaseApp() {
-  if (firebaseApp) return firebaseApp;
-
-  if (firebaseConfig.projectId && firebaseConfig.appId) {
-    const { firebaseApp: app } = initializeFirebase();
-    firebaseApp = app;
-  }
-  return firebaseApp;
-}

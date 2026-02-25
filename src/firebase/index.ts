@@ -11,7 +11,7 @@ import { type Firestore, getFirestore } from 'firebase/firestore';
 
 import { firebaseConfig } from '@/firebase/config';
 
-export { FirebaseProvider, FirebaseClientProvider, useFirebase, useFirebaseApp, useFirestore, useAuth, getFirebaseApp } from './provider';
+export { FirebaseProvider, FirebaseClientProvider, useFirebase, useFirebaseApp, useFirestore, useAuth } from './provider';
 export { useUser } from './auth/use-user';
 export { useDoc } from './firestore/use-doc';
 export { useCollection } from './firestore/use-collection';
