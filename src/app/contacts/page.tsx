@@ -7,7 +7,6 @@ import { PlusCircle, Upload } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import type { ContactList, Contact } from "@/lib/types";
-import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 import { ContactListControls } from "./components/contact-list-controls";
 import { ContactsTable } from "./components/contacts-table";
@@ -16,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { validateEmailAction } from "@/lib/actions";
 
 export default function ContactsPage() {
-  useAuthGuard();
   const { toast } = useToast();
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);

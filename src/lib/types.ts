@@ -1,5 +1,3 @@
-import type { Timestamp } from "firebase/firestore";
-
 export interface Contact {
   id: string;
   firstName: string;
@@ -31,11 +29,4 @@ export interface Campaign {
   body: string;
   contactListId: string | null;
   createdAt: string;
-}
-
-export interface Extraction {
-  id: string;
-  rawText: string;
-  emails: string[];
-  createdAt: Timestamp;
 }

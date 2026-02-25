@@ -1,122 +1,26 @@
 "use client";
 
-import { useActionState, useState, useMemo } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import PageHeader from "@/components/page-header";
 import { extractEmailsAction } from "@/lib/actions";
-import { Loader2, Copy, History } from "lucide-react";
+import { Loader2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthGuard } from "@/hooks/use-auth-guard";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-  query,
-  orderBy,
-  limit,
-} from "firebase/firestore";
-import type { Extraction } from "@/lib/types";
-import { formatDistanceToNow } from "date-fns";
-import { FirestorePermissionError } from "@/firebase/errors";
-import { errorEmitter } from "@/firebase/error-emitter";
 
 type ExtractedState = {
   emails?: string[];
   error?: string;
 } | null;
 
-function ExtractionHistory() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-
-  const extractionsQuery = useMemo(() => {
-    if (!user || !firestore) return null;
-    return query(
-      collection(firestore, "users", user.uid, "extractions"),
-      orderBy("createdAt", "desc"),
-      limit(10)
-    );
-  }, [user, firestore]);
-
-  const { data: extractions, loading } = useCollection<Extraction>(extractionsQuery);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!extractions || extractions.length === 0) {
-    return (
-      <div className="py-8 text-center text-muted-foreground">
-        No extraction history found.
-      </div>
-    );
-  }
-
-  return (
-    <Accordion type="single" collapsible className="w-full">
-      {extractions.map((extraction) => (
-        <AccordionItem key={extraction.id} value={extraction.id}>
-          <AccordionTrigger>
-            <div className="flex w-full items-center justify-between pr-4">
-              <span className="text-sm font-medium">
-                {extraction.emails.length} emails found
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {extraction.createdAt
-                  ? formatDistanceToNow(extraction.createdAt.toDate(), {
-                      addSuffix: true,
-                    })
-                  : "Just now"}
-              </span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold">Extracted Emails</h4>
-                <div className="mt-2 h-32 overflow-y-auto rounded-md border bg-muted/50 p-2 text-sm">
-                  {extraction.emails.join("\n")}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-semibold">Original Text</h4>
-                <div className="mt-2 h-32 overflow-y-auto rounded-md border bg-muted/50 p-2 text-sm">
-                  {extraction.rawText}
-                </div>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
-  );
-}
-
 export default function ExtractPage() {
-  useAuthGuard();
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
-
   const [text, setText] = useState("");
 
   const [state, formAction, isPending] = useActionState<
@@ -129,34 +33,6 @@ export default function ExtractPage() {
     }
     try {
       const result = await extractEmailsAction({ text });
-
-      if (user && firestore && result.emails) {
-        const extractionData = {
-          rawText: text,
-          emails: result.emails,
-          createdAt: serverTimestamp(),
-        };
-        const extractionsCol = collection(
-          firestore,
-          "users",
-          user.uid,
-          "extractions"
-        );
-        addDoc(extractionsCol, extractionData).catch((err) => {
-          const permissionError = new FirestorePermissionError({
-            path: extractionsCol.path,
-            operation: "create",
-            requestResourceData: extractionData,
-          });
-          errorEmitter.emit("permission-error", permissionError);
-          toast({
-            variant: "destructive",
-            title: "Could not save history",
-            description: "Failed to save extraction results to your history.",
-          });
-        });
-      }
-
       return { emails: result.emails };
     } catch (e: any) {
       return { error: e.message || "An unknown error occurred." };
@@ -204,20 +80,6 @@ export default function ExtractPage() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Extraction History
-              </CardTitle>
-              <CardDescription>
-                Your past 10 extractions are saved here.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ExtractionHistory />
             </CardContent>
           </Card>
         </div>
