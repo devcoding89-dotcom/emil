@@ -11,6 +11,8 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export async function signUp(auth: Auth, data: any) {
   const { email, password, displayName } = data;
@@ -20,10 +22,21 @@ export async function signUp(auth: Auth, data: any) {
   await updateProfile(user, { displayName });
 
   const db = getFirestore(auth.app);
-  await setDoc(doc(db, 'users', user.uid), {
+  const userDocRef = doc(db, 'users', user.uid);
+  const profileData = {
     displayName,
     email,
-  });
+  };
+  
+  setDoc(userDocRef, profileData)
+    .catch((serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'create',
+        requestResourceData: profileData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
 
   return user;
 }
@@ -40,10 +53,21 @@ export async function signInWithGoogle(auth: Auth) {
   const user = userCredential.user;
 
   const db = getFirestore(auth.app);
-  await setDoc(doc(db, 'users', user.uid), {
+  const userDocRef = doc(db, 'users', user.uid);
+  const profileData = {
     displayName: user.displayName,
     email: user.email,
-  }, { merge: true });
+  };
+  
+  setDoc(userDocRef, profileData, { merge: true })
+    .catch((serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'create',
+        requestResourceData: profileData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
 
   return user;
 }
