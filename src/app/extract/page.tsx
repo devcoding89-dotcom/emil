@@ -28,6 +28,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  limit,
 } from "firebase/firestore";
 import type { Extraction } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
@@ -47,7 +48,8 @@ function ExtractionHistory() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, "users", user.uid, "extractions"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
+      limit(10)
     );
   }, [user, firestore]);
 
