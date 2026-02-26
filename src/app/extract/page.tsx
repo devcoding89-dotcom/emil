@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useState, useMemo } from "react";
@@ -66,6 +67,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useFirestore, useUser, useCollection } from "@/firebase";
+import { collection, doc, addDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
 import type { ExtractionSnapshot, ContactList, Contact } from "@/lib/types";
 import { formatDistanceToNow, isToday, isWithinInterval, subDays, subMonths } from "date-fns";
 
@@ -77,16 +80,27 @@ type ExtractedState = {
 export default function ExtractPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
+  const db = useFirestore();
   const [text, setText] = useState("");
   const [snapshotTitle, setSnapshotTitle] = useState("");
   const { setIsLoading } = useGlobalLoading();
   
-  // Search and Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
 
-  const [snapshots, setSnapshots] = useLocalStorage<ExtractionSnapshot[]>("extraction-snapshots", []);
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
+
+  // Fetch parses from Firestore
+  const parsesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "users", user.uid, "parses"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
+
+  const { data: parses, loading: parsesLoading } = useCollection(parsesQuery);
 
   const [state, formAction, isPending] = useActionState<
     ExtractedState,
@@ -113,15 +127,14 @@ export default function ExtractPage() {
     }
   }, null);
 
-  // Filtering Logic
   const filteredSnapshots = useMemo(() => {
-    return snapshots.filter((snapshot) => {
-      // Search Filter
+    if (!parses) return [];
+    return parses.filter((snapshot) => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = 
-        snapshot.title.toLowerCase().includes(searchLower) ||
-        snapshot.rawText.toLowerCase().includes(searchLower) ||
-        snapshot.contacts.some(c => 
+        (snapshot.title?.toLowerCase() || "").includes(searchLower) ||
+        (snapshot.text?.toLowerCase() || "").includes(searchLower) ||
+        snapshot.contacts?.some((c: any) => 
           c.email.toLowerCase().includes(searchLower) || 
           c.firstName.toLowerCase().includes(searchLower) ||
           c.lastName.toLowerCase().includes(searchLower) ||
@@ -130,10 +143,9 @@ export default function ExtractPage() {
 
       if (!matchesSearch) return false;
 
-      // Date Filter
       if (dateFilter === "all") return true;
       
-      const createdAt = new Date(snapshot.createdAt);
+      const createdAt = snapshot.createdAt?.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt);
       const now = new Date();
 
       if (dateFilter === "today") return isToday(createdAt);
@@ -142,7 +154,7 @@ export default function ExtractPage() {
 
       return true;
     });
-  }, [snapshots, searchQuery, dateFilter]);
+  }, [parses, searchQuery, dateFilter]);
 
   const handleCopy = () => {
     if (state?.contacts && state.contacts.length > 0) {
@@ -171,53 +183,29 @@ export default function ExtractPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast({ title: "CSV Exported", description: "Your file is ready." });
-  };
-
-  const handleExportJSON = () => {
-    if (!state?.contacts || state.contacts.length === 0) return;
-    const jsonContent = JSON.stringify(
-      { 
-        contacts: state.contacts, 
-        count: state.contacts.length, 
-        extractedAt: new Date().toISOString() 
-      }, 
-      null, 
-      2
-    );
-    const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `extracted_contacts_${new Date().getTime()}.json`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ title: "JSON Exported", description: "Your file is ready." });
   };
 
   const handleSaveSnapshot = () => {
-    if (!state?.contacts || state.contacts.length === 0) return;
+    if (!state?.contacts || state.contacts.length === 0 || !db || !user) return;
     
-    const newSnapshot: ExtractionSnapshot = {
-      id: crypto.randomUUID(),
+    const parseData = {
       title: snapshotTitle || `Extraction ${new Date().toLocaleString()}`,
-      rawText: text,
+      text: text,
+      emails: state.contacts.map(c => c.email),
       contacts: state.contacts,
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
     };
 
-    setSnapshots([newSnapshot, ...snapshots]);
+    addDoc(collection(db, "users", user.uid, "parses"), parseData);
     setSnapshotTitle("");
     toast({
       title: "Snapshot Saved",
-      description: `Saved as "${newSnapshot.title}"`,
+      description: `Saved as "${parseData.title}" to your history.`,
     });
   };
 
-  const handleLoadSnapshot = (snapshot: ExtractionSnapshot) => {
-    setText(snapshot.rawText);
+  const handleLoadSnapshot = (snapshot: any) => {
+    setText(snapshot.text);
     toast({
         title: "Snapshot Loaded",
         description: `Text reloaded for "${snapshot.title}"`,
@@ -225,7 +213,8 @@ export default function ExtractPage() {
   };
 
   const handleDeleteSnapshot = (id: string) => {
-    setSnapshots(snapshots.filter(s => s.id !== id));
+    if (!db || !user) return;
+    deleteDoc(doc(db, "users", user.uid, "parses", id));
     toast({ title: "Snapshot Deleted" });
   };
 
@@ -255,29 +244,19 @@ export default function ExtractPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const { id: toastId } = toast({
-      title: "Uploading file...",
-      description: `Reading content from ${file.name}`
-    });
-
     try {
       const fileText = await file.text();
       setText(fileText);
       toast({
-        id: toastId,
         title: "File Loaded",
         description: `Successfully loaded ${file.name}. Click extract to process.`,
       });
     } catch (error) {
       toast({
-        id: toastId,
         variant: "destructive",
         title: "Upload Failed",
         description: "Could not read the file content.",
       });
-    } finally {
-      // Reset input value so same file can be uploaded again
-      e.target.value = "";
     }
   };
 
@@ -285,7 +264,7 @@ export default function ExtractPage() {
     <div className="container mx-auto py-8">
       <PageHeader
         title="Extract Contacts"
-        description="Paste any block of text or upload a file to intelligently extract unique emails, names, and company info."
+        description="Paste text or upload a file to intelligently extract emails, names, and company info."
       >
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
@@ -315,7 +294,7 @@ export default function ExtractPage() {
                 <div className="grid w-full gap-4">
                   <Textarea
                     name="text"
-                    placeholder="Paste email signatures, LinkedIn profiles, or upload a .txt/.csv file..."
+                    placeholder="Paste email signatures, profiles, or text here..."
                     className="min-h-[300px] resize-y"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
@@ -336,7 +315,7 @@ export default function ExtractPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <History className="h-5 w-5 text-primary" />
-                  <CardTitle>Recent Snapshots</CardTitle>
+                  <CardTitle>Recent Parses</CardTitle>
                 </div>
                 
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -354,7 +333,7 @@ export default function ExtractPage() {
                   <Select value={dateFilter} onValueChange={setDateFilter}>
                     <SelectTrigger className="w-full sm:w-[140px]">
                       <Filter className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="Filter by date" />
+                      <SelectValue placeholder="Date filter" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Time</SelectItem>
@@ -365,10 +344,13 @@ export default function ExtractPage() {
                   </Select>
                 </div>
               </div>
-              <CardDescription>Reload previous extractions to reuse data.</CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredSnapshots.length > 0 ? (
+              {parsesLoading ? (
+                <div className="flex h-[150px] items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredSnapshots.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
@@ -380,16 +362,16 @@ export default function ExtractPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredSnapshots.map((snapshot) => (
+                      {filteredSnapshots.map((snapshot: any) => (
                         <TableRow 
                           key={snapshot.id} 
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleLoadSnapshot(snapshot)}
                         >
                           <TableCell className="font-medium">{snapshot.title}</TableCell>
-                          <TableCell>{snapshot.contacts.length}</TableCell>
+                          <TableCell>{snapshot.contacts?.length || snapshot.emails?.length || 0}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(snapshot.createdAt), { addSuffix: true })}
+                            {snapshot.createdAt ? formatDistanceToNow(snapshot.createdAt.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt), { addSuffix: true }) : 'N/A'}
                           </TableCell>
                           <TableCell className="text-right">
                             <AlertDialog>
@@ -407,7 +389,7 @@ export default function ExtractPage() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete Snapshot?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the snapshot "{snapshot.title}".
+                                    Permanently delete "{snapshot.title}"?
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -426,20 +408,7 @@ export default function ExtractPage() {
                 </div>
               ) : (
                 <div className="flex h-[150px] flex-col items-center justify-center rounded-lg border border-dashed text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {searchQuery || dateFilter !== "all" 
-                      ? "No snapshots match your filters." 
-                      : "No snapshots saved yet."}
-                  </p>
-                  {(searchQuery || dateFilter !== "all") && (
-                    <Button 
-                      variant="link" 
-                      className="mt-2 text-primary"
-                      onClick={() => { setSearchQuery(""); setDateFilter("all"); }}
-                    >
-                      Clear all filters
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground">No extractions saved yet.</p>
                 </div>
               )}
             </CardContent>
@@ -459,7 +428,7 @@ export default function ExtractPage() {
               </div>
               {state?.contacts && state.contacts.length > 0 && (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy} title="Copy Emails">
+                  <Button variant="outline" size="sm" onClick={handleCopy}>
                     <Copy className="h-4 w-4 mr-2" />
                     Copy
                   </Button>
@@ -473,11 +442,7 @@ export default function ExtractPage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={handleExportCSV}>
                         <FileSpreadsheet className="h-4 w-4 mr-2" />
-                        Export CSV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExportJSON}>
-                        <FileJson className="h-4 w-4 mr-2" />
-                        Export JSON
+                        CSV
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -491,92 +456,63 @@ export default function ExtractPage() {
                 </div>
               )}
               
-              {state?.error && (
-                <div className="flex h-[300px] items-center justify-center rounded-md border border-destructive/50 bg-destructive/10 p-4 text-destructive text-center">
-                  <p>{state.error}</p>
-                </div>
-              )}
-              
               {state?.contacts && (
                 <>
                   <div className="h-[350px] overflow-auto rounded-md border bg-muted/50">
-                    {state.contacts.length > 0 ? (
-                      <Table>
-                        <TableHeader className="bg-muted sticky top-0 z-10">
-                          <TableRow>
-                            <TableHead className="text-xs">Contact</TableHead>
-                            <TableHead className="text-xs">Info</TableHead>
+                    <Table>
+                      <TableHeader className="bg-muted sticky top-0 z-10">
+                        <TableRow>
+                          <TableHead className="text-xs">Contact</TableHead>
+                          <TableHead className="text-xs">Details</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {state.contacts.map((contact, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold truncate">
+                                  {contact.firstName || contact.lastName ? `${contact.firstName} ${contact.lastName}` : "Unknown"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">{contact.email}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col text-xs">
+                                <span>{contact.company}</span>
+                                <span className="text-muted-foreground">{contact.position}</span>
+                              </div>
+                            </TableCell>
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {state.contacts.map((contact, index) => (
-                            <TableRow key={index} className="hover:bg-transparent">
-                              <TableCell>
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-sm font-semibold truncate max-w-[150px]">
-                                    {contact.firstName || contact.lastName 
-                                      ? `${contact.firstName} ${contact.lastName}`.trim() 
-                                      : "Unknown Name"}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                    {contact.email}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-0.5">
-                                  {contact.company && (
-                                    <span className="text-xs font-medium flex items-center gap-1">
-                                      <UserCheck className="h-3 w-3" />
-                                      {contact.company}
-                                    </span>
-                                  )}
-                                  {contact.position && (
-                                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">
-                                      {contact.position}
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-muted-foreground p-4 text-center">
-                        <p>No contact information identified.</p>
-                      </div>
-                    )}
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                   
-                  {state.contacts.length > 0 && (
-                    <div className="space-y-3 pt-2">
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="Snapshot Title..." 
-                          value={snapshotTitle}
-                          onChange={(e) => setSnapshotTitle(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button variant="secondary" onClick={handleSaveSnapshot} title="Save Snapshot">
-                          <Save className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <Button className="w-full" onClick={handleCreateCampaign}>
-                        <Send className="mr-2 h-4 w-4" />
-                        Create Campaign
+                  <div className="space-y-3 pt-2">
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Save as..." 
+                        value={snapshotTitle}
+                        onChange={(e) => setSnapshotTitle(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button variant="secondary" onClick={handleSaveSnapshot}>
+                        <Save className="h-4 w-4" />
                       </Button>
                     </div>
-                  )}
+                    <Button className="w-full" onClick={handleCreateCampaign}>
+                      <Send className="mr-2 h-4 w-4" />
+                      New Campaign
+                    </Button>
+                  </div>
                 </>
               )}
               
               {!isPending && !state && (
-                <div className="flex h-[300px] flex-col items-center justify-center rounded-md border border-dashed text-center p-6">
-                  <ExternalLink className="h-8 w-8 text-muted-foreground mb-2 opacity-20" />
-                  <p className="text-sm text-muted-foreground">
-                    Paste text or upload a file to extract contacts, names, and companies.
-                  </p>
+                <div className="flex h-[300px] flex-col items-center justify-center rounded-md border border-dashed text-center p-6 text-muted-foreground">
+                  <ExternalLink className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-sm">Paste text to extract contacts.</p>
                 </div>
               )}
             </CardContent>

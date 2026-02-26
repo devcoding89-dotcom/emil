@@ -25,12 +25,16 @@
         "email"
       ]
     },
-    "Extraction": {
-      "title": "Extraction Result",
-      "description": "Stores the result of an email extraction process.",
+    "Parse": {
+      "title": "Email Parse Result",
+      "description": "Stores the result of an AI email extraction process.",
       "type": "object",
       "properties": {
-        "rawText": {
+        "title": {
+          "type": "string",
+          "description": "A user-defined title for this parse record."
+        },
+        "text": {
           "type": "string",
           "description": "The original raw text that was parsed."
         },
@@ -42,14 +46,31 @@
           },
           "description": "The list of unique emails extracted from the text."
         },
+        "contacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" },
+              "company": { "type": "string" },
+              "position": { "type": "string" }
+            }
+          }
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the extraction was performed."
+        },
+        "campaignTitle": {
+          "type": "string",
+          "description": "Optional title if associated with a specific campaign."
         }
       },
       "required": [
-        "rawText",
+        "text",
         "emails",
         "createdAt"
       ]
@@ -68,11 +89,11 @@
       },
       "description": "Stores public user profile data."
     },
-    "/users/{userId}/extractions/{extractionId}": {
+    "/users/{userId}/parses/{parseId}": {
       "schema": {
-        "$ref": "#/entities/Extraction"
+        "$ref": "#/entities/Parse"
       },
-      "description": "Stores a user's history of email extraction results."
+      "description": "Stores a user's history of email extraction results (parses)."
     }
   }
 }
