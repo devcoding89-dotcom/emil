@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/page-header";
 import { extractEmailsAction } from "@/lib/actions";
 import { 
@@ -394,7 +395,14 @@ export default function ExtractPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-20">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Results</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle>Results</CardTitle>
+                {state?.emails && (
+                  <Badge variant="secondary" className="font-mono">
+                    {state.emails.length}
+                  </Badge>
+                )}
+              </div>
               {state?.emails && state.emails.length > 0 && (
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy} title="Copy to Clipboard">
