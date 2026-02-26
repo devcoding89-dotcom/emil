@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
@@ -165,6 +164,14 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     }
   };
 
+  const handleDraftWithAI = () => {
+    const values = form.getValues();
+    const formData = new FormData();
+    formData.append("name", values.name);
+    formData.append("subject", values.subject);
+    formData.append("body", values.body);
+    draftAction(formData);
+  };
 
   useEffect(() => {
     if (campaignId && !existingCampaign) {
@@ -260,15 +267,16 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                 <CardTitle>Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <form action={draftAction} className="space-y-2">
-                    <input type="hidden" {...form.register("name")} />
-                    <input type="hidden" {...form.register("subject")} />
-                    <input type="hidden" {...form.register("body")} />
-                    <Button type="submit" variant="outline" className="w-full" disabled={isDrafting}>
-                        <Wand2 className="mr-2 h-4 w-4"/>
-                        {isDrafting ? "Drafting with AI..." : "Draft with AI"}
-                    </Button>
-                </form>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  disabled={isDrafting}
+                  onClick={handleDraftWithAI}
+                >
+                    <Wand2 className="mr-2 h-4 w-4"/>
+                    {isDrafting ? "Drafting with AI..." : "Draft with AI"}
+                </Button>
                 <Button type="submit" className="w-full">
                   Save Campaign
                 </Button>
