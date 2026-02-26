@@ -20,9 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import PageHeader from "@/components/page-header";
 import { extractEmailsAction } from "@/lib/actions";
-import { Loader2, Copy, Save, History, Trash2, Send, ExternalLink } from "lucide-react";
+import { Loader2, Copy, Save, History, Trash2, Send, ExternalLink, Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
 import { useLocalStorage } from "@/hooks/use-local-storage";
@@ -79,6 +85,44 @@ export default function ExtractPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (!state?.emails || state.emails.length === 0) return;
+    const csvContent = "Email\n" + state.emails.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `extracted_emails_${new Date().getTime()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "CSV Exported", description: "Your file is ready." });
+  };
+
+  const handleExportJSON = () => {
+    if (!state?.emails || state.emails.length === 0) return;
+    const jsonContent = JSON.stringify(
+      { 
+        emails: state.emails, 
+        count: state.emails.length, 
+        extractedAt: new Date().toISOString() 
+      }, 
+      null, 
+      2
+    );
+    const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `extracted_emails_${new Date().getTime()}.json`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "JSON Exported", description: "Your file is ready." });
+  };
+
   const handleSaveSnapshot = () => {
     if (!state?.emails || state.emails.length === 0) return;
     
@@ -100,16 +144,10 @@ export default function ExtractPage() {
 
   const handleLoadSnapshot = (snapshot: ExtractionSnapshot) => {
     setText(snapshot.rawText);
-    // We manually set the state to simulate a successful extraction result
-    // Note: In a real app we might want to wrap this in a more formal state management
     toast({
         title: "Snapshot Loaded",
         description: `Loaded "${snapshot.title}"`,
     });
-    // We can't directly set 'state' from useActionState, but we can update local UI
-    // For simplicity, we'll just set the text and clear current results, 
-    // or we could trigger the action again. Let's just update the text for now.
-    // If we want to show the results immediately, we'd need a separate state for the displayed emails.
   };
 
   const handleDeleteSnapshot = (id: string, e: React.MouseEvent) => {
@@ -121,7 +159,6 @@ export default function ExtractPage() {
   const handleCreateCampaign = () => {
     if (!state?.emails || state.emails.length === 0) return;
 
-    // 1. Create a new Contact List
     const newList: ContactList = {
       id: crypto.randomUUID(),
       name: `Extracted List - ${new Date().toLocaleDateString()}`,
@@ -138,7 +175,6 @@ export default function ExtractPage() {
 
     setContactLists([...contactLists, newList]);
     
-    // 2. Redirect to New Campaign page with the new list selected (we'll pass ID in query or just rely on them selecting it)
     toast({
       title: "Contact List Created",
       description: `Created "${newList.name}" with ${newList.contacts.length} contacts.`,
@@ -239,12 +275,32 @@ export default function ExtractPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-20">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Extracted Emails</CardTitle>
+              <CardTitle>Results</CardTitle>
               {state?.emails && state.emails.length > 0 && (
-                <Button variant="outline" size="sm" onClick={handleCopy}>
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleCopy} title="Copy to Clipboard">
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleExportCSV}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Export CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportJSON}>
+                        <FileJson className="h-4 w-4 mr-2" />
+                        Export JSON
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
@@ -287,7 +343,7 @@ export default function ExtractPage() {
                           onChange={(e) => setSnapshotTitle(e.target.value)}
                           className="flex-1"
                         />
-                        <Button variant="secondary" onClick={handleSaveSnapshot}>
+                        <Button variant="secondary" onClick={handleSaveSnapshot} title="Save Snapshot">
                           <Save className="h-4 w-4" />
                         </Button>
                       </div>
