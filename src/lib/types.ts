@@ -30,3 +30,11 @@ export interface Campaign {
   contactListId: string | null;
   createdAt: string;
 }
+
+export interface ExtractionSnapshot {
+  id: string;
+  title: string;
+  rawText: string;
+  emails: string[];
+  createdAt: string;
+}
