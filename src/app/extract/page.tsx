@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useEffect } from "react";
+import { useActionState, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,14 +26,34 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import PageHeader from "@/components/page-header";
 import { extractEmailsAction } from "@/lib/actions";
-import { Loader2, Copy, Save, History, Trash2, Send, ExternalLink, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { 
+  Loader2, 
+  Copy, 
+  Save, 
+  History, 
+  Trash2, 
+  Send, 
+  ExternalLink, 
+  Download, 
+  FileJson, 
+  FileSpreadsheet,
+  Search,
+  Filter
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import type { ExtractionSnapshot, ContactList, Contact } from "@/lib/types";
-import { formatDistanceToNow } from "date-fns";
+import type { ExtractionSnapshot, ContactList } from "@/lib/types";
+import { formatDistanceToNow, isToday, isWithinInterval, subDays, subMonths } from "date-fns";
 
 type ExtractedState = {
   emails?: string[];
@@ -47,6 +67,10 @@ export default function ExtractPage() {
   const [snapshotTitle, setSnapshotTitle] = useState("");
   const { setIsLoading } = useGlobalLoading();
   
+  // Search and Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+
   const [snapshots, setSnapshots] = useLocalStorage<ExtractionSnapshot[]>("extraction-snapshots", []);
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
 
@@ -74,6 +98,32 @@ export default function ExtractPage() {
       return { error: e.message || "An unknown error occurred." };
     }
   }, null);
+
+  // Filtering Logic
+  const filteredSnapshots = useMemo(() => {
+    return snapshots.filter((snapshot) => {
+      // Search Filter
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        snapshot.title.toLowerCase().includes(searchLower) ||
+        snapshot.rawText.toLowerCase().includes(searchLower) ||
+        snapshot.emails.some(email => email.toLowerCase().includes(searchLower));
+
+      if (!matchesSearch) return false;
+
+      // Date Filter
+      if (dateFilter === "all") return true;
+      
+      const createdAt = new Date(snapshot.createdAt);
+      const now = new Date();
+
+      if (dateFilter === "today") return isToday(createdAt);
+      if (dateFilter === "week") return isWithinInterval(createdAt, { start: subDays(now, 7), end: now });
+      if (dateFilter === "month") return isWithinInterval(createdAt, { start: subMonths(now, 1), end: now });
+
+      return true;
+    });
+  }, [snapshots, searchQuery, dateFilter]);
 
   const handleCopy = () => {
     if (state?.emails && state.emails.length > 0) {
@@ -218,14 +268,42 @@ export default function ExtractPage() {
 
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-primary" />
-                <CardTitle>Recent Snapshots</CardTitle>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5 text-primary" />
+                  <CardTitle>Recent Snapshots</CardTitle>
+                </div>
+                
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder="Search history..."
+                      className="w-full pl-8 sm:w-[200px]"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  
+                  <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <SelectTrigger className="w-full sm:w-[140px]">
+                      <Filter className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Filter by date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="week">Past Week</SelectItem>
+                      <SelectItem value="month">Past Month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <CardDescription>Reload previous extractions to reuse data.</CardDescription>
             </CardHeader>
             <CardContent>
-              {snapshots.length > 0 ? (
+              {filteredSnapshots.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
@@ -237,7 +315,7 @@ export default function ExtractPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {snapshots.map((snapshot) => (
+                      {filteredSnapshots.map((snapshot) => (
                         <TableRow 
                           key={snapshot.id} 
                           className="cursor-pointer hover:bg-muted/50"
@@ -265,7 +343,20 @@ export default function ExtractPage() {
                 </div>
               ) : (
                 <div className="flex h-[150px] flex-col items-center justify-center rounded-lg border border-dashed text-center">
-                  <p className="text-sm text-muted-foreground">No snapshots saved yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    {searchQuery || dateFilter !== "all" 
+                      ? "No snapshots match your filters." 
+                      : "No snapshots saved yet."}
+                  </p>
+                  {(searchQuery || dateFilter !== "all") && (
+                    <Button 
+                      variant="link" 
+                      className="mt-2 text-primary"
+                      onClick={() => { setSearchQuery(""); setDateFilter("all"); }}
+                    >
+                      Clear all filters
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
