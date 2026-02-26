@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { AppShell } from "@/components/app-shell";
+import { LoadingProvider } from "@/hooks/use-global-loading";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -28,8 +29,10 @@ export default function RootLayout({
         )}
       >
         <FirebaseClientProvider>
-          <AppShell>{children}</AppShell>
-          <Toaster />
+          <LoadingProvider>
+            <AppShell>{children}</AppShell>
+            <Toaster />
+          </LoadingProvider>
         </FirebaseClientProvider>
       </body>
     </html>

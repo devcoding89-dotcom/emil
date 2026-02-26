@@ -6,8 +6,11 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { PanelLeft } from 'lucide-react';
 import { MobileNav } from './mobile-nav';
+import { useGlobalLoading } from '@/hooks/use-global-loading';
+import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { isLoading } = useGlobalLoading();
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
@@ -34,6 +37,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {isLoading && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-md">
+          <div className="animate-spin">
+             <span className="text-[12rem] font-black text-primary drop-shadow-[0_0_50px_rgba(var(--primary),0.5)]">
+               E
+             </span>
+          </div>
+          <p className="mt-8 text-xl font-medium text-muted-foreground animate-pulse">
+            Crafting Magic...
+          </p>
+        </div>
+      )}
     </div>
   );
 }

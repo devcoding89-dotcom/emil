@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -13,6 +13,7 @@ import PageHeader from "@/components/page-header";
 import { extractEmailsAction } from "@/lib/actions";
 import { Loader2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGlobalLoading } from "@/hooks/use-global-loading";
 
 type ExtractedState = {
   emails?: string[];
@@ -22,6 +23,7 @@ type ExtractedState = {
 export default function ExtractPage() {
   const { toast } = useToast();
   const [text, setText] = useState("");
+  const { setIsLoading } = useGlobalLoading();
 
   const [state, formAction, isPending] = useActionState<
     ExtractedState,
@@ -38,6 +40,10 @@ export default function ExtractPage() {
       return { error: e.message || "An unknown error occurred." };
     }
   }, null);
+
+  useEffect(() => {
+    setIsLoading(isPending);
+  }, [isPending, setIsLoading]);
 
   const handleCopy = () => {
     if (state?.emails && state.emails.length > 0) {

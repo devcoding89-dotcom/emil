@@ -28,6 +28,7 @@ import {
 import PageHeader from "@/components/page-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
+import { useGlobalLoading } from "@/hooks/use-global-loading";
 import type { Campaign, ContactList, SmtpConfig } from "@/lib/types";
 import { draftCampaignContentAction, sendCampaignAction } from "@/lib/actions";
 import { Loader2, Wand2, Send, ChevronLeft, Info } from "lucide-react";
@@ -54,6 +55,7 @@ const availableTokens = [
 export function CampaignForm({ campaignId }: { campaignId?: string }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { setIsLoading } = useGlobalLoading();
   const [campaigns, setCampaigns] = useLocalStorage<Campaign[]>("campaigns", []);
   const [contactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
   const [smtpConfig] = useLocalStorage<SmtpConfig | null>("smtp-config", null);
@@ -94,6 +96,10 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       return { error: e.message };
     }
   }, { error: undefined });
+
+  useEffect(() => {
+    setIsLoading(isDrafting || isSending);
+  }, [isDrafting, isSending, setIsLoading]);
 
   function onSubmit(values: CampaignFormData) {
     if (campaignId) {
