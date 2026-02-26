@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
@@ -80,26 +81,29 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     { suggestedSubject?: string; suggestedBody?: string; error?: string },
     FormData
   >(async (prevState, formData) => {
+    setIsLoading(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 2500));
     try {
-      const result = await draftCampaignContentAction({
-        campaignName: formData.get("name") as string,
-        emailSubjectPrompt: formData.get("subject") as string,
-        emailBodyPrompt: formData.get("body") as string,
-        availableTokens: availableTokens,
-      });
+      const [result] = await Promise.all([
+        draftCampaignContentAction({
+          campaignName: formData.get("name") as string,
+          emailSubjectPrompt: formData.get("subject") as string,
+          emailBodyPrompt: formData.get("body") as string,
+          availableTokens: availableTokens,
+        }),
+        minWait
+      ]);
       form.setValue("subject", result.suggestedSubject, { shouldValidate: true });
       form.setValue("body", result.suggestedBody, { shouldValidate: true });
       toast({ title: "AI suggestions applied!" });
+      setIsLoading(false);
       return { suggestedSubject: result.suggestedSubject, suggestedBody: result.suggestedBody };
     } catch (e: any) {
+      setIsLoading(false);
       toast({ variant: "destructive", title: "AI Draft Failed", description: e.message });
       return { error: e.message };
     }
   }, { error: undefined });
-
-  useEffect(() => {
-    setIsLoading(isDrafting || isSending);
-  }, [isDrafting, isSending, setIsLoading]);
 
   function onSubmit(values: CampaignFormData) {
     if (campaignId) {
@@ -137,9 +141,15 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     }
     
     setIsSending(true);
+    setIsLoading(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 2500));
+    
     try {
       const campaignData = { ...existingCampaign, ...values } as Campaign;
-      const result = await sendCampaignAction(campaignData, contactList.contacts, smtpConfig);
+      const [result] = await Promise.all([
+        sendCampaignAction(campaignData, contactList.contacts, smtpConfig),
+        minWait
+      ]);
       toast({
         title: "Campaign Dispatch Complete",
         description: `${result.sent} sent, ${result.failed} failed.`,
@@ -151,6 +161,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       toast({ variant: "destructive", title: "Failed to Send Campaign", description: e.message });
     } finally {
       setIsSending(false);
+      setIsLoading(false);
     }
   };
 

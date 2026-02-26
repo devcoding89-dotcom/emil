@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useState, useEffect } from "react";
@@ -33,17 +34,25 @@ export default function ExtractPage() {
     if (!text.trim()) {
       return { error: "Text block cannot be empty." };
     }
+    
+    // Set loading globally for the "long" E experience
+    setIsLoading(true);
+    
+    // Ensure the loading state stays for at least 2.5 seconds
+    const minWait = new Promise(resolve => setTimeout(resolve, 2500));
+    
     try {
-      const result = await extractEmailsAction({ text });
+      const [result] = await Promise.all([
+        extractEmailsAction({ text }),
+        minWait
+      ]);
+      setIsLoading(false);
       return { emails: result.emails };
     } catch (e: any) {
+      setIsLoading(false);
       return { error: e.message || "An unknown error occurred." };
     }
   }, null);
-
-  useEffect(() => {
-    setIsLoading(isPending);
-  }, [isPending, setIsLoading]);
 
   const handleCopy = () => {
     if (state?.emails && state.emails.length > 0) {
