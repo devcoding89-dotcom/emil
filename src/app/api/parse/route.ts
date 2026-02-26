@@ -3,10 +3,10 @@ import { extractEmails } from '@/ai/flows/ai-email-extraction-flow';
 
 /**
  * POST /api/parse
- * Extracts unique email addresses from a provided text block.
+ * Extracts unique contact details from a provided text block.
  * 
  * Input (JSON): { "text": string }
- * Output (JSON): { "emails": string[] }
+ * Output (JSON): { "contacts": Array<{ email, firstName, lastName, company, position }> }
  */
 export async function POST(request: Request) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     console.error('API /api/parse error:', error);
 
     return NextResponse.json(
-      { error: error.message || 'An internal server error occurred while parsing emails.' },
+      { error: error.message || 'An internal server error occurred while parsing contacts.' },
       { status: 500 }
     );
   }

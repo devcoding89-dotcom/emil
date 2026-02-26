@@ -35,6 +35,6 @@ export interface ExtractionSnapshot {
   id: string;
   title: string;
   rawText: string;
-  emails: string[];
+  contacts: Omit<Contact, "id">[];
   createdAt: string;
 }
