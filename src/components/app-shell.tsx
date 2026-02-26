@@ -14,12 +14,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, setIsLoading } = useGlobalLoading();
   const pathname = usePathname();
 
-  // Trigger a brief loading state on navigation to show the rolling "E"
+  // Trigger a long loading state on navigation to show the rolling "E"
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 600); // Show for 600ms to allow animation to play
+    }, 2500); // Increased duration to 2.5 seconds as requested
     return () => clearTimeout(timer);
   }, [pathname, setIsLoading]);
 
@@ -50,19 +50,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {isLoading && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm transition-all duration-300">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm transition-all duration-500">
           <div className="animate-bounce">
-            <div className="animate-spin duration-700">
-               <span className="text-[14rem] font-black text-primary drop-shadow-[0_0_30px_rgba(51,51,230,0.3)] select-none">
+            <div className="animate-spin duration-1000">
+               <span className="text-[14rem] font-black text-primary drop-shadow-[0_0_50px_rgba(51,51,230,0.4)] select-none">
                  E
                </span>
             </div>
           </div>
           <div className="mt-12 flex flex-col items-center gap-2">
-            <p className="text-2xl font-bold text-primary animate-pulse tracking-widest">
+            <p className="text-3xl font-bold text-primary animate-pulse tracking-widest">
               EmailCraft
             </p>
-            <p className="text-sm text-muted-foreground uppercase tracking-[0.3em]">
+            <p className="text-sm text-muted-foreground uppercase tracking-[0.5em]">
               Studio
             </p>
           </div>
