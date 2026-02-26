@@ -60,7 +60,8 @@ import {
   FileSpreadsheet,
   Search,
   Filter,
-  UserCheck
+  UserCheck,
+  Upload
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
@@ -217,13 +218,6 @@ export default function ExtractPage() {
 
   const handleLoadSnapshot = (snapshot: ExtractionSnapshot) => {
     setText(snapshot.rawText);
-    // Setting state directly to trigger the display of results
-    // We use a small trick by defining the state manually here or we could just 
-    // re-run the extraction, but loading from snapshot is faster.
-    // However, the actionState is controlled by formAction. 
-    // For MVP, we'll just set the text and the user can re-extract, 
-    // or we can just let them view the history. 
-    // Let's make it smarter:
     toast({
         title: "Snapshot Loaded",
         description: `Text reloaded for "${snapshot.title}"`,
@@ -257,12 +251,58 @@ export default function ExtractPage() {
     router.push("/campaigns/new");
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const { id: toastId } = toast({
+      title: "Uploading file...",
+      description: `Reading content from ${file.name}`
+    });
+
+    try {
+      const fileText = await file.text();
+      setText(fileText);
+      toast({
+        id: toastId,
+        title: "File Loaded",
+        description: `Successfully loaded ${file.name}. Click extract to process.`,
+      });
+    } catch (error) {
+      toast({
+        id: toastId,
+        variant: "destructive",
+        title: "Upload Failed",
+        description: "Could not read the file content.",
+      });
+    } finally {
+      // Reset input value so same file can be uploaded again
+      e.target.value = "";
+    }
+  };
+
   return (
     <div className="container mx-auto py-8">
       <PageHeader
         title="Extract Contacts"
-        description="Paste any block of text to intelligently extract unique emails, names, and company info."
-      />
+        description="Paste any block of text or upload a file to intelligently extract unique emails, names, and company info."
+      >
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <label htmlFor="file-upload" className="cursor-pointer">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload File
+              <input 
+                id="file-upload" 
+                type="file" 
+                accept=".txt,.csv" 
+                className="sr-only" 
+                onChange={handleFileUpload}
+              />
+            </label>
+          </Button>
+        </div>
+      </PageHeader>
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
@@ -275,12 +315,12 @@ export default function ExtractPage() {
                 <div className="grid w-full gap-4">
                   <Textarea
                     name="text"
-                    placeholder="Paste email signatures, LinkedIn profiles, or any text here..."
+                    placeholder="Paste email signatures, LinkedIn profiles, or upload a .txt/.csv file..."
                     className="min-h-[300px] resize-y"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
-                  <Button type="submit" disabled={isPending || !text}>
+                  <Button type="submit" disabled={isPending || !text.trim()}>
                     {isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
@@ -535,7 +575,7 @@ export default function ExtractPage() {
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-md border border-dashed text-center p-6">
                   <ExternalLink className="h-8 w-8 text-muted-foreground mb-2 opacity-20" />
                   <p className="text-sm text-muted-foreground">
-                    Paste text to extract contacts, names, and companies.
+                    Paste text or upload a file to extract contacts, names, and companies.
                   </p>
                 </div>
               )}
