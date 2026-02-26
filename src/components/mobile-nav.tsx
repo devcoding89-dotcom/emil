@@ -8,9 +8,13 @@ import {
   Mailbox,
   Send,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
+import { useDoc, useUser, useFirestore } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { useMemo } from "react";
 
 const navLinks = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -21,6 +25,16 @@ const navLinks = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const userProfileRef = useMemo(() => {
+    if (!db || !user) return null;
+    return doc(db, "users", user.uid);
+  }, [db, user]);
+
+  const { data: profile } = useDoc(userProfileRef);
+
   return (
     <nav className="grid gap-6 text-lg font-medium">
       <Link
@@ -47,6 +61,22 @@ export function MobileNav() {
           {label}
         </Link>
       ))}
+
+      {profile?.isAdmin && (
+        <Link
+          href="/admin"
+          className={cn(
+            'flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground',
+            {
+              'text-foreground': pathname.startsWith('/admin'),
+            }
+          )}
+        >
+          <ShieldCheck className="h-5 w-5 text-amber-500" />
+          Admin Panel
+        </Link>
+      )}
+
       <Link
         href="/settings"
         className={cn(

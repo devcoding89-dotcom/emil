@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -14,9 +15,13 @@ import {
   Mailbox,
   Send,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useDoc, useUser, useFirestore } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { useMemo } from "react";
 
 const navLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -27,6 +32,15 @@ const navLinks = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const userProfileRef = useMemo(() => {
+    if (!db || !user) return null;
+    return doc(db, "users", user.uid);
+  }, [db, user]);
+
+  const { data: profile } = useDoc(userProfileRef);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -60,6 +74,26 @@ export function Sidebar() {
               <TooltipContent side="right">{label}</TooltipContent>
             </Tooltip>
           ))}
+          
+          {profile?.isAdmin && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                    {
+                      "bg-accent text-accent-foreground": pathname.startsWith("/admin"),
+                    }
+                  )}
+                >
+                  <ShieldCheck className="h-5 w-5 text-amber-500" />
+                  <span className="sr-only">Admin Panel</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Admin Panel</TooltipContent>
+            </Tooltip>
+          )}
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
           <Tooltip>

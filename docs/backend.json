@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -13,13 +14,52 @@
           "type": "string",
           "format": "email",
           "description": "The user's email address."
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Whether the user has administrative privileges."
         }
       },
-      "required": ["displayName", "email"]
+      "required": [
+        "displayName",
+        "email"
+      ]
+    },
+    "Extraction": {
+      "title": "Extraction Result",
+      "description": "Stores the result of an email extraction process.",
+      "type": "object",
+      "properties": {
+        "rawText": {
+          "type": "string",
+          "description": "The original raw text that was parsed."
+        },
+        "emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "The list of unique emails extracted from the text."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the extraction was performed."
+        }
+      },
+      "required": [
+        "rawText",
+        "emails",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["email-password", "google.com"]
+    "providers": [
+      "email-password",
+      "google.com"
+    ]
   },
   "firestore": {
     "/users/{userId}": {
@@ -27,6 +67,12 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores public user profile data."
+    },
+    "/users/{userId}/extractions/{extractionId}": {
+      "schema": {
+        "$ref": "#/entities/Extraction"
+      },
+      "description": "Stores a user's history of email extraction results."
     }
   }
 }
