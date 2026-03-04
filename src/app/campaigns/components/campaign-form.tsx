@@ -30,7 +30,7 @@ import PageHeader from "@/components/page-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
-import type { Campaign, ContactList, SmtpConfig } from "@/lib/types";
+import type { Campaign, ContactList } from "@/lib/types";
 import { draftCampaignContentAction, sendCampaignAction } from "@/lib/actions";
 import { Loader2, Wand2, Send, ChevronLeft, Info, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -59,7 +59,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
   const { setIsLoading } = useGlobalLoading();
   const [campaigns, setCampaigns] = useLocalStorage<Campaign[]>("campaigns", []);
   const [contactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
-  const [smtpConfig] = useLocalStorage<SmtpConfig | null>("smtp-config", null);
 
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
@@ -126,10 +125,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
   }
 
   const handleSendCampaign = async () => {
-    if (!smtpConfig || !smtpConfig.host) {
-      toast({ variant: "destructive", title: "SMTP Not Configured", description: "Please configure your SMTP settings before sending." });
-      return;
-    }
     const values = form.getValues();
     if (!values.contactListId) {
       toast({ variant: "destructive", title: "No Contact List", description: "Please select a contact list." });
@@ -147,20 +142,20 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     
     try {
       const campaignData = { ...existingCampaign, ...values } as Campaign;
-      const result = await sendCampaignAction(campaignData, contactList.contacts, smtpConfig);
+      const result = await sendCampaignAction(campaignData, contactList.contacts);
       
       setSendResult({ sent: result.sent, failed: result.failed });
       
       if (result.failed === 0) {
         toast({
           title: "Campaign Sent Successfully!",
-          description: `All ${result.sent} emails were delivered.`,
+          description: `All ${result.sent} emails were delivered via internal SMTP.`,
         });
       } else {
         toast({
           variant: result.sent > 0 ? "default" : "destructive",
           title: "Campaign Dispatch Finished",
-          description: `${result.sent} sent, ${result.failed} failed. Check console for error details.`,
+          description: `${result.sent} sent, ${result.failed} failed.`,
         });
         if (result.errors.length > 0) {
             console.error("Campaign Dispatch Errors:", result.errors);
@@ -307,7 +302,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
             <Card>
               <CardHeader>
                 <CardTitle>Dispatch</CardTitle>
-                <CardDescription>Send this campaign to a list.</CardDescription>
+                <CardDescription>Send this campaign via internal SMTP.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Controller
@@ -373,9 +368,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
 
                 {!existingCampaign && (
                   <p className="text-xs text-muted-foreground text-center italic">Save the campaign first to unlock sending.</p>
-                )}
-                 {!smtpConfig?.host && (
-                  <p className="text-xs text-destructive text-center font-medium">SMTP not configured in Settings.</p>
                 )}
               </CardContent>
             </Card>
