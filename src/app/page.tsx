@@ -2,24 +2,35 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3 } from "lucide-react";
+import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History } from "lucide-react";
 import type { ContactList, Campaign } from "@/lib/types";
 import PageHeader from "@/components/page-header";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts";
+import { useFirestore, useUser, useCollection } from "@/firebase";
+import { collection, query } from "firebase/firestore";
 
 export default function DashboardPage() {
+  const { user } = useUser();
+  const db = useFirestore();
+  
   const [totalContacts, setTotalContacts] = useState(0);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [totalLists, setTotalLists] = useState(0);
   const [validContacts, setValidContacts] = useState(0);
   const [invalidContacts, setInvalidContacts] = useState(0);
+
+  // Fetch parses (snapshots) from Firestore for total count
+  const parsesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, "users", user.uid, "parses"));
+  }, [db, user]);
+
+  const { data: parses } = useCollection(parsesQuery);
 
   useEffect(() => {
     try {
@@ -88,13 +99,13 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saved Campaigns</CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Extractions</CardTitle>
+            <History className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCampaigns}</div>
+            <div className="text-2xl font-bold">{parses?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Drafts and active dispatches
+              Intelligent parses in history
             </p>
           </CardContent>
         </Card>
