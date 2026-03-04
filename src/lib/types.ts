@@ -30,18 +30,23 @@ export interface ComplianceSettings {
   complaintRate: number;
 }
 
-export type CampaignStatus = "draft" | "queued" | "sending" | "completed" | "failed";
+export type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "completed" | "failed";
 
 export interface Campaign {
   id: string;
   name: string;
   subject: string;
+  previewText?: string;
   body: string;
+  internalNotes?: string;
   contactListId: string | null;
   status: CampaignStatus;
   sentCount: number;
   failedCount: number;
   totalCount: number;
+  scheduledAt?: string;
+  smartRateLimiting: boolean;
+  pauseOnBounceThreshold: boolean;
   createdAt: string;
   updatedAt: string;
 }
