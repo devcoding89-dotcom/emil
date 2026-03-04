@@ -1,3 +1,4 @@
+
 "use server";
 
 import { extractEmails } from "@/ai/flows/ai-email-extraction-flow";
@@ -15,15 +16,16 @@ import type { Campaign, Contact, SenderSettings } from "./types";
 import dns from "dns/promises";
 
 /**
- * PLATFORM-MANAGED INFRASTRUCTURE (Twilio SendGrid)
- * No manual SMTP configuration is required from users.
+ * PLATFORM-MANAGED INFRASTRUCTURE (Twilio SendGrid API Pattern)
+ * Designed for bulk scaling and rate-controlled delivery.
  */
 
-// Domain Validation
 const PUBLIC_DOMAINS = [
   "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", 
   "icloud.com", "aol.com", "protonmail.com", "zoho.com"
 ];
+
+const BATCH_SIZE = 50; // Recipients per API call
 
 export async function isPublicDomain(email: string): Promise<boolean> {
   const domain = email.split("@")[1]?.toLowerCase();
@@ -66,23 +68,14 @@ export async function validateEmailAction(
 
 // Domain Verification Mock
 export async function verifyDomainAction(domain: string): Promise<{ success: boolean; message: string }> {
-  // In a real app, this would check SendGrid's API for DNS verification status
   await new Promise(resolve => setTimeout(resolve, 1500));
-  
   if (domain.includes(".")) {
     return { success: true, message: "Domain DNS records verified successfully!" };
   }
   return { success: false, message: "Could not find valid DNS records for this domain." };
 }
 
-// Email Sending Action
-interface SendCampaignResult {
-  total: number;
-  sent: number;
-  failed: number;
-  errors: string[];
-}
-
+// Personalization Helper
 function personalize(template: string, contact: Contact): string {
   let content = template;
   const tokens: { [key: string]: string | undefined } = {
@@ -99,47 +92,37 @@ function personalize(template: string, contact: Contact): string {
   return content;
 }
 
-export async function sendCampaignAction(
+// Bulk Send Logic (Batching recipients in one call)
+// This simulates the SendGrid "Personalizations" API feature
+export async function processBatchAction(
   campaign: Campaign,
-  contacts: Contact[],
+  batchContacts: Contact[],
   sender: SenderSettings
-): Promise<SendCampaignResult> {
-  const results: SendCampaignResult = {
-    total: contacts.length,
-    sent: 0,
-    failed: 0,
-    errors: [],
-  };
+): Promise<{ sent: number; failed: number; errors: string[] }> {
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
 
-  // Check sender verification (Simulated platform check)
-  if (!sender.isDomainVerified || !sender.fromEmail) {
-    throw new Error("Cannot send campaign: Sender identity or domain not verified.");
-  }
-
-  for (const contact of contacts) {
-    const { isValid, reason } = await validateEmailAction(contact.email);
-    if (!isValid) {
-      results.failed++;
-      results.errors.push(`Skipped ${contact.email}: ${reason}`);
-      continue;
-    }
-
+  // Simulate API Request to Provider
+  // In real SendGrid, you'd send one POST /v3/mail/send with multiple personalizations
+  for (const contact of batchContacts) {
     try {
-      const personalizedSubject = personalize(campaign.subject, contact);
-      const personalizedBody = personalize(campaign.body, contact);
+      // Basic domain check before dispatch
+      const { isValid } = await validateEmailAction(contact.email);
+      if (!isValid) {
+        failed++;
+        errors.push(`Validation failed for ${contact.email}`);
+        continue;
+      }
 
-      // MOCK SENDGRID API CALL
-      // console.log(`[SendGrid API] Sending to ${contact.email} from ${sender.fromEmail}`);
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      results.sent++;
-    } catch (error: any) {
-      results.failed++;
-      results.errors.push(`Failed to send to ${contact.email}: ${error.message}`);
+      // Simulate API processing time
+      await new Promise(resolve => setTimeout(resolve, 50)); 
+      sent++;
+    } catch (e: any) {
+      failed++;
+      errors.push(e.message);
     }
   }
 
-  return results;
+  return { sent, failed, errors };
 }

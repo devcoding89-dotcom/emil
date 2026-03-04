@@ -74,6 +74,27 @@
         "emails",
         "createdAt"
       ]
+    },
+    "Campaign": {
+      "title": "Email Campaign",
+      "description": "Represents an email marketing campaign.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "contactListId": { "type": "string" },
+        "status": { 
+          "type": "string", 
+          "enum": ["draft", "queued", "sending", "completed", "failed"] 
+        },
+        "sentCount": { "type": "number" },
+        "failedCount": { "type": "number" },
+        "totalCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "subject", "body", "status", "createdAt"]
     }
   },
   "auth": {
@@ -94,6 +115,12 @@
         "$ref": "#/entities/Parse"
       },
       "description": "Stores a user's history of email extraction results (parses)."
+    },
+    "/users/{userId}/campaigns/{campaignId}": {
+      "schema": {
+        "$ref": "#/entities/Campaign"
+      },
+      "description": "Stores a user's email campaigns and their real-time dispatch status."
     }
   }
 }
