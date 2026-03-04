@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History } from "lucide-react";
+import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History, Loader2 } from "lucide-react";
 import type { ContactList, Campaign } from "@/lib/types";
 import PageHeader from "@/components/page-header";
 import {
@@ -19,18 +20,23 @@ export default function DashboardPage() {
   const db = useFirestore();
   
   const [totalContacts, setTotalContacts] = useState(0);
-  const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [totalLists, setTotalLists] = useState(0);
   const [validContacts, setValidContacts] = useState(0);
   const [invalidContacts, setInvalidContacts] = useState(0);
 
-  // Fetch parses (snapshots) from Firestore for total count
+  // Firestore Queries
   const parsesQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "parses"));
   }, [db, user]);
 
-  const { data: parses } = useCollection(parsesQuery);
+  const campaignsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, "users", user.uid, "campaigns"));
+  }, [db, user]);
+
+  const { data: parses, loading: parsesLoading } = useCollection(parsesQuery);
+  const { data: campaigns, loading: campaignsLoading } = useCollection(campaignsQuery);
 
   useEffect(() => {
     try {
@@ -54,12 +60,6 @@ export default function DashboardPage() {
         setValidContacts(validCount);
         setInvalidContacts(invalidCount);
       }
-
-      const storedCampaigns = localStorage.getItem("campaigns");
-      if (storedCampaigns) {
-        const campaigns: Campaign[] = JSON.parse(storedCampaigns);
-        setTotalCampaigns(campaigns.length);
-      }
     } catch (error) {
       console.error("Failed to parse data from localStorage", error);
     }
@@ -76,6 +76,14 @@ export default function DashboardPage() {
       label: "Contacts",
     },
   };
+
+  if (parsesLoading || campaignsLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -123,15 +131,13 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verification Rate</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
+            <Rocket className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {totalContacts > 0 ? Math.round((validContacts / totalContacts) * 100) : 0}%
-            </div>
+            <div className="text-2xl font-bold">{campaigns?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Percentage of healthy emails
+              Total managed outreach
             </p>
           </CardContent>
         </Card>

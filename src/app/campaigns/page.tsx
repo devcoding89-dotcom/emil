@@ -1,27 +1,50 @@
+
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
-import { useLocalStorage } from "@/hooks/use-local-storage";
-import type { Campaign } from "@/lib/types";
+import { useCollection, useFirestore, useUser } from "@/firebase";
+import { collection, query, orderBy, doc, deleteDoc } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 import { CampaignCard } from "./components/campaign-card";
+import type { Campaign } from "@/lib/types";
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useLocalStorage<Campaign[]>("campaigns", []);
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const campaignsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "users", user.uid, "campaigns"), 
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
+
+  const { data: campaigns, loading } = useCollection<Campaign>(campaignsQuery);
 
   const handleDelete = (id: string) => {
-    setCampaigns(campaigns.filter((c) => c.id !== id));
+    if (!db || !user) return;
+    const docRef = doc(db, "users", user.uid, "campaigns", id);
+    
+    deleteDoc(docRef).catch(async () => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: "delete",
+      });
+      errorEmitter.emit("permission-error", permissionError);
+    });
   };
-  
-  const sortedCampaigns = [...campaigns].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div className="container mx-auto py-8">
       <PageHeader
         title="Campaigns"
-        description="Manage your saved email campaigns."
+        description="Manage your professional email outreach campaigns."
       >
         <Button asChild size="sm">
           <Link href="/campaigns/new">
@@ -31,9 +54,13 @@ export default function CampaignsPage() {
         </Button>
       </PageHeader>
 
-      {sortedCampaigns.length > 0 ? (
+      {loading ? (
+        <div className="flex h-[400px] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : campaigns && campaigns.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sortedCampaigns.map((campaign) => (
+          {campaigns.map((campaign) => (
             <CampaignCard
               key={campaign.id}
               campaign={campaign}
@@ -47,7 +74,7 @@ export default function CampaignsPage() {
             No Campaigns Yet
           </h3>
           <p className="text-muted-foreground">
-            Get started by creating a new campaign.
+            Get started by creating a new high-performance campaign.
           </p>
           <Button asChild className="mt-4">
             <Link href="/campaigns/new">Create Campaign</Link>

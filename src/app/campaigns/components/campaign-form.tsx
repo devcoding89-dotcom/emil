@@ -56,6 +56,8 @@ import {
 import Link from "next/link";
 import { useFirestore, useUser, useDoc } from "@/firebase";
 import { doc, setDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
@@ -178,14 +180,24 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       createdAt: campaignData?.createdAt || new Date().toISOString(),
     };
 
-    setDoc(docRef, data, { merge: true });
-    
-    toast({ title: campaignId ? "Campaign Updated" : "Campaign Created" });
-    setIsLoading(false);
-    
-    if (!campaignId) {
-      router.push(`/campaigns/${id}/edit`);
-    }
+    setDoc(docRef, data, { merge: true })
+      .then(() => {
+        toast({ title: campaignId ? "Campaign Updated" : "Campaign Saved as Draft" });
+        if (!campaignId) {
+          router.push(`/campaigns/${id}/edit`);
+        }
+      })
+      .catch(async () => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: "write",
+          requestResourceData: data,
+        });
+        errorEmitter.emit("permission-error", permissionError);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }
 
   const handleDispatch = async () => {
@@ -218,26 +230,22 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     for (let i = 0; i < contacts.length; i += batchSize) {
       const batch = contacts.slice(i, i + batchSize);
       
-      // Call Server Action to process batch via SendGrid
       const result = await processBatchAction(campaignData as Campaign, batch, sender);
       
       totalSent += result.sent;
       totalFailed += result.failed;
 
-      // Update progress in Firestore (Client-side SDK)
       updateDoc(campaignRef, {
         sentCount: totalSent,
         failedCount: totalFailed,
         updatedAt: serverTimestamp(),
       });
 
-      // Write individual delivery logs
       const logsRef = collection(db, "users", user.uid, "campaigns", campaignData.id, "logs");
       for (const log of result.logs) {
         addDoc(logsRef, log);
       }
       
-      // Delay between batches to respect rate limits
       if (i + batchSize < contacts.length) {
         await new Promise(r => setTimeout(r, 1500));
       }
@@ -274,6 +282,14 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     return <Badge className={cn("px-2 py-0.5 border-none", className)}>{label}</Badge>;
   };
 
+  if (campaignId && campaignLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 max-w-6xl">
       <PageHeader
@@ -291,7 +307,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
-            {/* 1. Overview */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div className="space-y-1">
@@ -336,7 +351,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
               </CardContent>
             </Card>
 
-            {/* 2. Audience Selection */}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -389,20 +403,9 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     </div>
                   </div>
                 )}
-
-                {selectedList && selectedList.contacts.length > DAILY_SEND_LIMIT && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Daily Limit Exceeded</AlertTitle>
-                    <AlertDescription>
-                      This list exceeds your daily limit of {DAILY_SEND_LIMIT.toLocaleString()} emails. Smart Rate Limiting will spread this over multiple days.
-                    </AlertDescription>
-                  </Alert>
-                )}
               </CardContent>
             </Card>
 
-            {/* 3. Email Content */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div className="space-y-1">
@@ -429,17 +432,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase">From Name</FormLabel>
-                    <Input value={sender.fromName || "Not Configured"} disabled className="bg-muted/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase">From Email</FormLabel>
-                    <Input value={sender.fromEmail || "Not Configured"} disabled className="bg-muted/30" />
-                  </div>
-                </div>
-                
                 <FormField
                   control={form.control}
                   name="subject"
@@ -453,7 +445,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="previewText"
@@ -463,13 +454,9 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                       <FormControl>
                         <Input placeholder="Short summary displayed in inbox preview..." {...field} />
                       </FormControl>
-                      <FormDescription>Shown in inbox previews, typically 40-100 characters.</FormDescription>
                     </FormItem>
                   )}
                 />
-
-                <Separator />
-
                 <FormField
                   control={form.control}
                   name="body"
@@ -479,7 +466,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                       <FormControl>
                         <Textarea
                           placeholder="Hi {{firstName}}, I noticed {{company}} is..."
-                          className="min-h-[400px] font-sans text-sm leading-relaxed"
+                          className="min-h-[400px]"
                           {...field}
                         />
                       </FormControl>
@@ -487,143 +474,19 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     </FormItem>
                   )}
                 />
-
-                <div className="flex items-center gap-2 pt-2">
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Tokens:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {availableTokens.map(t => (
-                      <Badge key={t} variant="secondary" className="text-[10px] font-mono cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors" onClick={() => {
-                        const current = form.getValues("body");
-                        form.setValue("body", current + " " + t);
-                      }}>
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
               </CardContent>
-              <CardFooter className="bg-muted/30 rounded-b-lg flex justify-between">
-                <p className="text-xs text-muted-foreground italic flex items-center gap-1">
-                  <Info className="h-3 w-3" /> Use tokens to personalize content for each recipient.
-                </p>
-                <Button variant="secondary" size="sm" type="button" disabled={isSending}>
-                  Send Test Email
-                </Button>
-              </CardFooter>
             </Card>
           </div>
 
           <div className="lg:col-span-1 space-y-8">
-            {/* 4. Scheduling */}
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <CardTitle>Scheduling</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 <div className="grid gap-2">
-                  <Button variant="outline" className="justify-start text-left font-normal" type="button">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Send Immediately
-                  </Button>
-                  <Button variant="ghost" className="justify-start text-left font-normal text-muted-foreground" type="button">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Schedule for Later...
-                  </Button>
-                </div>
-                {selectedList && (
-                   <div className="text-[10px] text-muted-foreground bg-muted p-2 rounded border border-dashed text-center">
-                    Estimated Duration: ~{Math.ceil(selectedList.contacts.length / HOURLY_SEND_LIMIT * 60)} minutes
-                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 5. Sending Controls */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-amber-500" />
-                  <CardTitle>Controls</CardTitle>
-                </div>
-                <CardDescription>Platform infrastructure settings.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Smart Rate Limiting</Label>
-                      <p className="text-[10px] text-muted-foreground">Respect inbox providers (Gmail/Outlook)</p>
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name="smartRateLimiting"
-                      render={({ field }) => (
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      )}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Safety Auto-Pause</Label>
-                      <p className="text-[10px] text-muted-foreground">Pause if bounce rate &gt; 5%</p>
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name="pauseOnBounceThreshold"
-                      render={({ field }) => (
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold uppercase text-muted-foreground">
-                    <span>Hourly Rate</span>
-                    <span>{HOURLY_SEND_LIMIT} / hour</span>
-                  </div>
-                  <Progress value={5} className="h-1.5" />
-                  <div className="flex justify-between text-xs font-bold uppercase text-muted-foreground pt-2">
-                    <span>Daily Capacity</span>
-                    <span>{DAILY_SEND_LIMIT} / day</span>
-                  </div>
-                  <Progress value={12} className="h-1.5" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 6. Review & Launch */}
-            <Card className={cn(
-              "border-primary shadow-xl ring-2 ring-primary/10 transition-all",
-              isSending && "ring-4 ring-primary/20 scale-[1.02]"
-            )}>
-              <CardHeader className="bg-primary/5">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-5 w-5 text-primary" />
                   <CardTitle>Review & Launch</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <div className="space-y-3">
-                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total Recipients</span>
-                    <span className="font-bold">{selectedList?.contacts.length || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Sender Domain</span>
-                    <span className="font-mono text-xs">{sender.domain || "Unverified"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Compliance</span>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 h-5">Healthy</Badge>
-                  </div>
-                </div>
-
+              <CardContent className="space-y-4">
                 {isSending ? (
                   <div className="space-y-4 py-2">
                     <div className="flex justify-between text-xs font-medium">
@@ -634,10 +497,10 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     <Progress value={progress} className="h-2" />
                     <div className="grid grid-cols-2 gap-2 text-center text-[10px] font-bold">
                       <div className="p-2 bg-green-50 text-green-700 rounded border border-green-100">
-                        SUCCESS: {campaignData.sentCount}
+                        SUCCESS: {campaignData?.sentCount || 0}
                       </div>
                       <div className="p-2 bg-red-50 text-red-700 rounded border border-red-100">
-                        FAILED: {campaignData.failedCount}
+                        FAILED: {campaignData?.failedCount || 0}
                       </div>
                     </div>
                   </div>
@@ -659,11 +522,10 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                       disabled={isSending}
                     >
                       <Save className="mr-2 h-4 w-4" />
-                      Save as Draft
+                      Save Draft
                     </Button>
                   </div>
                 )}
-
                 {!sender.isDomainVerified && (
                   <Alert variant="destructive" className="py-2 border-none bg-red-50">
                     <Globe className="h-4 w-4 text-red-600" />
@@ -671,10 +533,6 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                       Domain authentication required. <Link href="/settings" className="underline font-bold">Verify DNS</Link>
                     </AlertDescription>
                   </Alert>
-                )}
-                
-                {!campaignId && (
-                  <p className="text-[10px] text-center text-muted-foreground italic">Save campaign to unlock launch controls.</p>
                 )}
               </CardContent>
             </Card>
