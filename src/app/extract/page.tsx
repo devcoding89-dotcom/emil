@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useActionState, useState, useMemo } from "react";
@@ -69,7 +68,7 @@ import { useGlobalLoading } from "@/hooks/use-global-loading";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useFirestore, useUser, useCollection } from "@/firebase";
 import { collection, doc, addDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
-import type { ExtractionSnapshot, ContactList, Contact } from "@/lib/types";
+import type { ContactList, Contact } from "@/lib/types";
 import { formatDistanceToNow, isToday, isWithinInterval, subDays, subMonths } from "date-fns";
 
 type ExtractedState = {
@@ -91,7 +90,6 @@ export default function ExtractPage() {
 
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
 
-  // Fetch parses from Firestore
   const parsesQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -261,16 +259,17 @@ export default function ExtractPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-4 sm:py-8">
       <PageHeader
         title="Extract Contacts"
-        description="Paste text or upload a file to intelligently extract emails, names, and company info."
+        description="Paste text or upload a file to intelligently extract contacts."
       >
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mr-2 h-4 w-4" />
-              Upload File
+              <span className="hidden sm:inline">Upload File</span>
+              <span className="sm:hidden">Upload</span>
               <input 
                 id="file-upload" 
                 type="file" 
@@ -283,8 +282,8 @@ export default function ExtractPage() {
         </div>
       </PageHeader>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="space-y-8 lg:col-span-2">
+      <div className="grid gap-6 sm:gap-8 lg:grid-cols-3">
+        <div className="space-y-6 sm:space-y-8 lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Input Text</CardTitle>
@@ -295,7 +294,7 @@ export default function ExtractPage() {
                   <Textarea
                     name="text"
                     placeholder="Paste email signatures, profiles, or text here..."
-                    className="min-h-[300px] resize-y"
+                    className="min-h-[200px] sm:min-h-[300px] resize-y"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
@@ -319,7 +318,7 @@ export default function ExtractPage() {
                 </div>
                 
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="relative">
+                  <div className="relative flex-1 sm:flex-none">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="search"
@@ -351,13 +350,13 @@ export default function ExtractPage() {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : filteredSnapshots.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Title</TableHead>
-                        <TableHead>Contacts</TableHead>
-                        <TableHead>Date</TableHead>
+                        <TableHead className="hidden sm:table-cell">Contacts</TableHead>
+                        <TableHead className="hidden sm:table-cell">Date</TableHead>
                         <TableHead className="text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -368,9 +367,16 @@ export default function ExtractPage() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleLoadSnapshot(snapshot)}
                         >
-                          <TableCell className="font-medium">{snapshot.title}</TableCell>
-                          <TableCell>{snapshot.contacts?.length || snapshot.emails?.length || 0}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span className="truncate max-w-[150px] sm:max-w-none">{snapshot.title}</span>
+                              <span className="text-[10px] text-muted-foreground sm:hidden">
+                                {snapshot.contacts?.length || snapshot.emails?.length || 0} contacts • {snapshot.createdAt ? formatDistanceToNow(snapshot.createdAt.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt), { addSuffix: true }) : 'N/A'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">{snapshot.contacts?.length || snapshot.emails?.length || 0}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
                             {snapshot.createdAt ? formatDistanceToNow(snapshot.createdAt.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt), { addSuffix: true }) : 'N/A'}
                           </TableCell>
                           <TableCell className="text-right">
@@ -416,8 +422,8 @@ export default function ExtractPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="sticky top-20">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="lg:sticky lg:top-20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div className="flex items-center gap-2">
                 <CardTitle>Results</CardTitle>
                 {state?.contacts && (
@@ -428,15 +434,14 @@ export default function ExtractPage() {
               </div>
               {state?.contacts && state.contacts.length > 0 && (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy}>
+                  <Button variant="outline" size="sm" onClick={handleCopy} className="hidden sm:flex">
                     <Copy className="h-4 w-4 mr-2" />
                     Copy
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
+                        <Download className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -451,14 +456,14 @@ export default function ExtractPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {isPending && (
-                <div className="flex h-[300px] items-center justify-center">
+                <div className="flex h-[200px] sm:h-[300px] items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               )}
               
               {state?.contacts && (
                 <>
-                  <div className="h-[350px] overflow-auto rounded-md border bg-muted/50">
+                  <div className="h-[250px] sm:h-[350px] overflow-auto rounded-md border bg-muted/50">
                     <Table>
                       <TableHeader className="bg-muted sticky top-0 z-10">
                         <TableRow>
@@ -471,16 +476,16 @@ export default function ExtractPage() {
                           <TableRow key={index}>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="text-sm font-semibold truncate">
+                                <span className="text-sm font-semibold truncate max-w-[120px]">
                                   {contact.firstName || contact.lastName ? `${contact.firstName} ${contact.lastName}` : "Unknown"}
                                 </span>
-                                <span className="text-xs text-muted-foreground">{contact.email}</span>
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{contact.email}</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col text-xs">
-                                <span>{contact.company}</span>
-                                <span className="text-muted-foreground">{contact.position}</span>
+                              <div className="flex flex-col text-[10px]">
+                                <span className="truncate max-w-[100px]">{contact.company}</span>
+                                <span className="text-muted-foreground truncate max-w-[100px]">{contact.position}</span>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -510,7 +515,7 @@ export default function ExtractPage() {
               )}
               
               {!isPending && !state && (
-                <div className="flex h-[300px] flex-col items-center justify-center rounded-md border border-dashed text-center p-6 text-muted-foreground">
+                <div className="flex h-[200px] sm:h-[300px] flex-col items-center justify-center rounded-md border border-dashed text-center p-6 text-muted-foreground">
                   <ExternalLink className="h-8 w-8 mb-2 opacity-20" />
                   <p className="text-sm">Paste text to extract contacts.</p>
                 </div>

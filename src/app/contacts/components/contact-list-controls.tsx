@@ -50,14 +50,14 @@ export function ContactListControls({
   };
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center">
-      <div className="flex-1">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="w-full sm:flex-1">
         <Select
           onValueChange={(value) => onSelectList(value)}
           value={selectedListId ?? ""}
           disabled={lists.length === 0}
         >
-          <SelectTrigger className="w-full md:w-[250px]">
+          <SelectTrigger className="w-full sm:w-[250px]">
             <SelectValue placeholder="Select a contact list" />
           </SelectTrigger>
           <SelectContent>
@@ -70,42 +70,43 @@ export function ContactListControls({
         </Select>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex w-full sm:w-auto items-center gap-2">
         <Input
           placeholder="New list name"
           value={newListName}
           onChange={(e) => setNewListName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          className="flex-1"
+          className="flex-1 sm:w-[200px]"
         />
-        <Button onClick={handleCreate} disabled={!newListName.trim()}>
+        <Button onClick={handleCreate} disabled={!newListName.trim()} size="sm" className="shrink-0">
           <Plus className="h-4 w-4 mr-2" />
-          Create List
+          <span className="hidden sm:inline">Create List</span>
+          <span className="sm:hidden">Create</span>
         </Button>
+        
+        {selectedListId && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="icon" title="Delete selected list" className="shrink-0">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  selected contact list and all its contacts.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDeleteList(selectedListId)}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
-
-       {selectedListId && (
-         <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="icon" title="Delete selected list">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                selected contact list and all its contacts.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDeleteList(selectedListId)}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
     </div>
   );
 }

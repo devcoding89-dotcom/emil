@@ -9,6 +9,7 @@ import { PanelLeft } from 'lucide-react';
 import { MobileNav } from './mobile-nav';
 import { useGlobalLoading } from '@/hooks/use-global-loading';
 import { cn } from '@/lib/utils';
+import { UserNav } from './user-nav';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, setIsLoading } = useGlobalLoading();
@@ -19,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2500); // Increased duration to 2.5 seconds as requested
+    }, 2500); 
     return () => clearTimeout(timer);
   }, [pathname, setIsLoading]);
 
@@ -40,9 +41,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
           
-          <div className="relative ml-auto flex-1 md:grow-0">
-             {/* Future search bar can go here */}
-          </div>
+          <div className="flex-1" />
+          
+          <UserNav />
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           {children}
@@ -53,16 +54,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm transition-all duration-500">
           <div className="animate-bounce">
             <div className="animate-spin duration-1000">
-               <span className="text-[14rem] font-black text-primary drop-shadow-[0_0_50px_rgba(51,51,230,0.4)] select-none">
+               <span className="text-[10rem] sm:text-[14rem] font-black text-primary drop-shadow-[0_0_50px_rgba(51,51,230,0.4)] select-none">
                  E
                </span>
             </div>
           </div>
-          <div className="mt-12 flex flex-col items-center gap-2">
-            <p className="text-3xl font-bold text-primary animate-pulse tracking-widest">
+          <div className="mt-8 sm:mt-12 flex flex-col items-center gap-2">
+            <p className="text-2xl sm:text-3xl font-bold text-primary animate-pulse tracking-widest">
               EmailCraft
             </p>
-            <p className="text-sm text-muted-foreground uppercase tracking-[0.5em]">
+            <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-[0.5em]">
               Studio
             </p>
           </div>
