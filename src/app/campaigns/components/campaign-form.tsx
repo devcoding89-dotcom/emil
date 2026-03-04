@@ -559,7 +559,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm">Safety Auto-Pause</Label>
-                      <p className="text-[10px] text-muted-foreground">Pause if bounce rate > 5%</p>
+                      <p className="text-[10px] text-muted-foreground">Pause if bounce rate &gt; 5%</p>
                     </div>
                     <FormField
                       control={form.control}
