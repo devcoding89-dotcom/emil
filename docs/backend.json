@@ -4,545 +4,99 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents an authenticated user of the EmailCraft Studio application, serving as the owner of all associated data.",
+      "description": "Represents an authenticated user of the EmailCraft Studio application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address, used for login and identification.",
-          "format": "email"
-        },
-        "name": {
-          "type": "string",
-          "description": "The user's display name."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the user account was created.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "createdAt"
-      ]
+      "required": ["id", "email", "createdAt"]
     },
-    "ParseResult": {
+    "Parse": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ParseResult",
+      "title": "Parse",
       "type": "object",
-      "description": "Stores the results of a text-to-email extraction operation performed by a user.",
+      "description": "Stores the results of a text-to-email extraction operation.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ParseResult entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who performed this extraction. (Relationship: User 1:N ParseResult)"
-        },
-        "title": {
-          "type": "string",
-          "description": "An optional title given by the user to identify this parse result, e.g., for a snapshot."
-        },
-        "textInput": {
-          "type": "string",
-          "description": "The raw text provided by the user for email extraction."
-        },
-        "extractedEmails": {
-          "type": "array",
-          "description": "An array of unique, valid email addresses successfully extracted from the text input.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "extractedNames": {
-          "type": "array",
-          "description": "An optional array of names extracted alongside emails, if the AI tool identified them.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "invalidEmails": {
-          "type": "array",
-          "description": "An optional array of email-like strings that were found but deemed invalid during extraction/validation.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when this text extraction was performed.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "emails": { "type": "array", "items": { "type": "string" } },
+        "contacts": { "type": "array", "items": { "type": "object" } },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "textInput",
-        "extractedEmails",
-        "createdAt"
-      ]
+      "required": ["id", "userId", "text", "emails", "createdAt"]
     },
     "Contact": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Contact",
       "type": "object",
-      "description": "Represents an individual contact with their details, belonging to a user.",
+      "description": "Represents an individual contact with their details.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Contact entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who owns this contact. (Relationship: User 1:N Contact)"
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The first name of the contact."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the contact."
-        },
-        "email": {
-          "type": "string",
-          "description": "The primary email address of the contact.",
-          "format": "email"
-        },
-        "company": {
-          "type": "string",
-          "description": "The company the contact is associated with."
-        },
-        "position": {
-          "type": "string",
-          "description": "The job position or title of the contact within their company."
-        },
-        "isValid": {
-          "type": "boolean",
-          "description": "Indicates if the email address has passed validation checks (syntax and MX record)."
-        },
-        "validationMessage": {
-          "type": "string",
-          "description": "A message detailing the validation status, especially if invalid (e.g., 'Invalid syntax', 'Domain not found')."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the contact was created or imported.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp of the last update to the contact's details.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "company": { "type": "string" },
+        "position": { "type": "string" },
+        "isValid": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "firstName",
-        "lastName",
-        "email",
-        "isValid",
-        "createdAt"
-      ]
-    },
-    "ContactList": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ContactList",
-      "type": "object",
-      "description": "A collection of contacts grouped together for use in campaigns.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ContactList entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who owns this contact list. (Relationship: User 1:N ContactList)"
-        },
-        "name": {
-          "type": "string",
-          "description": "A descriptive name for the contact list (e.g., 'Product Launch Leads')."
-        },
-        "description": {
-          "type": "string",
-          "description": "An optional longer description for the contact list."
-        },
-        "contactIds": {
-          "type": "array",
-          "description": "An array of IDs referencing the Contacts in this list. (Relationship: ContactList N:N Contact)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the contact list was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp of the last update to the contact list (e.g., contacts added/removed).",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "name",
-        "contactIds",
-        "createdAt"
-      ]
-    },
-    "SmtpConfiguration": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SmtpConfiguration",
-      "type": "object",
-      "description": "Stores the user-configured settings for connecting to an SMTP service (e.g., Brevo, SendGrid) for email dispatch.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the SmtpConfiguration entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who owns this SMTP configuration. (Relationship: User 1:N SmtpConfiguration)"
-        },
-        "name": {
-          "type": "string",
-          "description": "A descriptive name for this SMTP configuration (e.g., 'Brevo Primary', 'SendGrid Outreach')."
-        },
-        "host": {
-          "type": "string",
-          "description": "The SMTP server host (e.g., 'smtp-relay.brevo.com')."
-        },
-        "port": {
-          "type": "number",
-          "description": "The port number for the SMTP server (e.g., 587, 465)."
-        },
-        "secure": {
-          "type": "boolean",
-          "description": "Indicates if the connection should use SSL/TLS (true for SSL, false for TLS)."
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for SMTP authentication (e.g., Brevo SMTP login, API key for SendGrid)."
-        },
-        "fromEmail": {
-          "type": "string",
-          "description": "The email address from which campaigns will be sent using this configuration.",
-          "format": "email"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the SMTP configuration was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp of the last update to the SMTP configuration.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "name",
-        "host",
-        "port",
-        "secure",
-        "username",
-        "fromEmail",
-        "createdAt"
-      ]
+      "required": ["id", "userId", "firstName", "email", "isValid", "createdAt"]
     },
     "Campaign": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Campaign",
       "type": "object",
-      "description": "Represents an email campaign created by a user, including its content, target list, and sending settings.",
+      "description": "Represents an email campaign created by a user.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Campaign entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who created this campaign. (Relationship: User 1:N Campaign)"
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the campaign (e.g., 'Product Launch Outreach')."
-        },
-        "subjectTemplate": {
-          "type": "string",
-          "description": "The email subject line template, which may include personalization tokens (e.g., 'Hi {{firstName}}, check this out!')."
-        },
-        "bodyTemplate": {
-          "type": "string",
-          "description": "The email body template, which may include personalization tokens (e.g., 'Hello {{firstName}}, I noticed {{company}}...')."
-        },
-        "personalizationTokens": {
-          "type": "array",
-          "description": "An array of personalization token keys used in the subject and body templates (e.g., 'firstName', 'company').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "contactListId": {
-          "type": "string",
-          "description": "Reference to the ContactList targeted by this campaign. (Relationship: Campaign 1:1 ContactList)"
-        },
-        "smtpConfigurationId": {
-          "type": "string",
-          "description": "Reference to the SmtpConfiguration used for sending this campaign's emails. (Relationship: Campaign 1:1 SmtpConfiguration)"
-        },
-        "scheduledTime": {
-          "type": "string",
-          "description": "The planned time for the campaign to start sending emails. If null, the campaign is for immediate sending.",
-          "format": "date-time"
-        },
-        "sendingSpeed": {
-          "type": "number",
-          "description": "The desired rate of email dispatch in emails per minute, to avoid spam flagging."
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the campaign (e.g., 'draft', 'pending', 'sending', 'completed', 'paused', 'failed')."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the campaign was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp of the last update to the campaign's configuration.",
-          "format": "date-time"
-        },
-        "completedAt": {
-          "type": "string",
-          "description": "Timestamp when the campaign finished sending all its emails.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "previewText": { "type": "string" },
+        "body": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "sending", "paused", "completed", "failed"] },
+        "contactListId": { "type": "string" },
+        "sentCount": { "type": "number" },
+        "failedCount": { "type": "number" },
+        "totalCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "name",
-        "subjectTemplate",
-        "bodyTemplate",
-        "contactListId",
-        "smtpConfigurationId",
-        "sendingSpeed",
-        "status",
-        "createdAt"
-      ]
-    },
-    "CampaignLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "CampaignLog",
-      "type": "object",
-      "description": "Records the outcome and details of each individual email sent as part of a campaign.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CampaignLog entity."
-        },
-        "campaignId": {
-          "type": "string",
-          "description": "Reference to the Campaign this log entry belongs to. (Relationship: Campaign 1:N CampaignLog)"
-        },
-        "contactId": {
-          "type": "string",
-          "description": "Reference to the Contact to whom the email was addressed. (Relationship: CampaignLog 1:1 Contact)"
-        },
-        "emailAddress": {
-          "type": "string",
-          "description": "The email address to which this specific email was sent or attempted.",
-          "format": "email"
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of this specific email (e.g., 'sent', 'failed', 'invalid', 'bounced', 'opened', 'clicked')."
-        },
-        "errorMessage": {
-          "type": "string",
-          "description": "An optional message providing details if the email sending failed or was invalid."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp when the email event (send attempt, failure, etc.) occurred.",
-          "format": "date-time"
-        },
-        "openTracked": {
-          "type": "boolean",
-          "description": "Indicates if the email open was tracked (requires external service integration)."
-        },
-        "clickTracked": {
-          "type": "boolean",
-          "description": "Indicates if a link click within the email was tracked (requires external service integration)."
-        }
-      },
-      "required": [
-        "id",
-        "campaignId",
-        "contactId",
-        "emailAddress",
-        "status",
-        "timestamp"
-      ]
+      "required": ["id", "userId", "name", "subject", "body", "status", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "google.com"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profile information. Access is restricted to the authenticated user matching `{userId}`. The `id` field within the document must match the `{userId}` in the path and `request.auth.uid`."
-        }
-      },
-      {
-        "path": "/users/{userId}/parseResults/{parseResultId}",
-        "definition": {
-          "entityName": "ParseResult",
-          "schema": {
-            "$ref": "#/backend/entities/ParseResult"
-          },
-          "description": "Contains the results of email extraction performed by a user. Ownership is enforced by the hierarchical path. Includes denormalized `userId` for authorization independence, which must match the `{userId}` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the parse result."
-            },
-            {
-              "name": "parseResultId",
-              "description": "The unique identifier for the specific parse result."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/contacts/{contactId}",
-        "definition": {
-          "entityName": "Contact",
-          "schema": {
-            "$ref": "#/backend/entities/Contact"
-          },
-          "description": "Stores individual contact details owned by a user. Ownership is enforced by the hierarchical path. Includes denormalized `userId` for authorization independence, which must match the `{userId}` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the contact."
-            },
-            {
-              "name": "contactId",
-              "description": "The unique identifier for the specific contact."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/contactLists/{contactListId}",
-        "definition": {
-          "entityName": "ContactList",
-          "schema": {
-            "$ref": "#/backend/entities/ContactList"
-          },
-          "description": "Manages lists of contacts created by a user. Ownership is enforced by the hierarchical path. Includes denormalized `userId` for authorization independence, which must match the `{userId}` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the contact list."
-            },
-            {
-              "name": "contactListId",
-              "description": "The unique identifier for the specific contact list."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/smtpConfigurations/{smtpConfigurationId}",
-        "definition": {
-          "entityName": "SmtpConfiguration",
-          "schema": {
-            "$ref": "#/backend/entities/SmtpConfiguration"
-          },
-          "description": "Stores SMTP configuration details for a user. Ownership is enforced by the hierarchical path. Includes denormalized `userId` for authorization independence, which must match the `{userId}` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the SMTP configuration."
-            },
-            {
-              "name": "smtpConfigurationId",
-              "description": "The unique identifier for the specific SMTP configuration."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/campaigns/{campaignId}",
-        "definition": {
-          "entityName": "Campaign",
-          "schema": {
-            "$ref": "#/backend/entities/Campaign"
-          },
-          "description": "Defines an email campaign owned by a user. Ownership is enforced by the hierarchical path. Includes denormalized `userId` for authorization independence, which must match the `{userId}` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the campaign."
-            },
-            {
-              "name": "campaignId",
-              "description": "The unique identifier for the specific campaign."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/campaigns/{campaignId}/campaignLogs/{campaignLogId}",
-        "definition": {
-          "entityName": "CampaignLog",
-          "schema": {
-            "$ref": "#/backend/entities/CampaignLog"
-          },
-          "description": "Records individual email sending events for a specific campaign. Ownership is inherited through the hierarchical path. The document must include a denormalized `userId` (the owner of the parent campaign) for authorization independence, matching the `{userId}` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the campaign and its logs."
-            },
-            {
-              "name": "campaignId",
-              "description": "The unique identifier for the parent campaign this log entry belongs to."
-            },
-            {
-              "name": "campaignLogId",
-              "description": "The unique identifier for the specific campaign log entry."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure for EmailCraft Studio is designed with a strong emphasis on Authorization Independence and Secure List Operations (QAPs) by strictly adhering to path-based ownership and strategic denormalization. All user-specific data is organized hierarchically under a top-level `/users/{userId}` collection. This pattern ensures that all documents within a user's subcollections (e.g., `parseResults`, `contacts`, `campaigns`) automatically inherit the user's `uid` from the path for authorization.\n\nTo achieve **Authorization Independence** (CRITICAL), every document in a user's subcollection includes a denormalized `userId` field. This `userId` field *must* match the `{userId}` segment in its Firestore path, as well as `request.auth.uid` in security rules. For example, a `Campaign` document at `/users/{userId}/campaigns/{campaignId}` will contain `resource.data.userId` matching `{userId}`. This eliminates the need for expensive and complex `get()` calls in Firestore rules to check parent document ownership, allowing atomic operations and simplifying rule logic significantly. This principle is extended to the `CampaignLog` documents, where the `userId` of the campaign owner will be denormalized directly into each log entry.\n\n**Secure List Operations (QAPs)** are naturally facilitated by this hierarchical, user-owned structure. Since all user data is partitioned under `/users/{userId}`, security rules can directly enforce `allow list: request.auth.uid == userId;` on these paths. This means a user can only query and retrieve their own data, and the rules are not burdened with filtering data for which the user lacks permissions. This ensures that queries are efficient and secure by design.\n\n**Structural Segregation** is maintained by ensuring each collection (e.g., `parseResults`, `contacts`, `campaigns`) holds documents of a single type with a consistent security posture—all being privately owned by the associated user. This prevents mixing public and private data or data with different access requirements within the same collection, simplifying rule definitions. The `status` field in `Campaign` explicitly models the state, adhering to predictable schema principles."
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "Stores user profile information."
+    },
+    "/users/{userId}/parses/{parseId}": {
+      "schema": { "$ref": "#/backend/entities/Parse" },
+      "description": "Contains extraction results."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": { "$ref": "#/backend/entities/Contact" },
+      "description": "Stores individual contacts."
+    },
+    "/users/{userId}/contactLists/{contactListId}": {
+      "schema": { "type": "object" },
+      "description": "Manages lists of contacts."
+    },
+    "/users/{userId}/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/backend/entities/Campaign" },
+      "description": "Defines an email campaign."
+    },
+    "/users/{userId}/campaigns/{campaignId}/logs/{logId}": {
+      "schema": { "type": "object" },
+      "description": "Records delivery events."
+    }
   }
 }
