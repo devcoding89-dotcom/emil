@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * EMAILCRAFT STUDIO SECURITY RULES
+     * 
+     * CORE PHILOSOPHY:
+     * This ruleset enforces a strict "User-Ownership" model. EmailCraft Studio is designed so 
+     * that every piece of data—from contacts to campaign logs—is private and belongs 
+     * exclusively to the authenticated user who created it.
+     * 
+     * DATA STRUCTURE:
+     * The database follows a hierarchical structure where all data is nested under 
+     * /users/{userId}. This allows for clear path-based authorization and simplifies 
+     * querying by ensuring users only ever interact with their own data tree.
+     * 
+     * KEY SECURITY DECISIONS:
+     * 1. Private by Default: No data is publicly accessible. All reads and writes 
+     *    require a valid Firebase Auth session.
+     * 2. No User Discovery: Users cannot list other users in the system. 
+     *    Access to a user profile is restricted to the owner.
+     * 3. Authorization Independence: Every document contains a denormalized 'userId' 
+     *    field. This allows rules to verify ownership instantly without performing 
+     *    expensive 'get()' calls to parent documents, ensuring high performance 
+     *    and lower costs.
+     * 4. Structural Segregation: Each collection is dedicated to a specific 
+     *    entity type (Contacts, Campaigns, etc.), ensuring a consistent and 
+     *    predictable security posture across the application.
+     * 
+     * PROTOTYPING MODE:
+     * These rules prioritize strict authorization (who can access what) while 
+     * remaining flexible on the specific shape of the data (schema) to facilitate 
+     * rapid development and iteration of features.
+     */
+
+    // --- Helper Functions ---
+
+    /** Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Checks if a document exists and if the requester is the owner. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** Verifies that a field in the incoming data matches the userId in the path. */
+    function matchesPath(userId, field) {
+      return request.resource.data[field] == userId;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the User profile. Only the user themselves can read or manage their profile.
+     * @path /users/{userId}
+     * @allow (get) If auth.uid == userId.
+     * @deny (list) Listing users is always forbidden.
+     * @principle Restricts access to a user's own root document and enforces path-to-data consistency.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && matchesPath(userId, 'id');
+      allow update: if isExistingOwner(userId) && matchesPath(userId, 'id');
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for ParseResults (AI email extractions).
+       * @path /users/{userId}/parseResults/{parseResultId}
+       * @allow (create) If auth.uid == userId and userId is provided in data.
+       * @deny (update) If user attempts to change the ownership field.
+       * @principle Enforces document ownership and data/path relational integrity.
+       */
+      match /parseResults/{parseResultId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && matchesPath(userId, 'userId');
+        allow update: if isExistingOwner(userId) && matchesPath(userId, 'userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for individual Contacts.
+       * @path /users/{userId}/contacts/{contactId}
+       * @allow (list) The owner can list all their contacts.
+       * @deny (get) If the requester is not the userId in the path.
+       * @principle Path-based ownership for private contact management.
+       */
+      match /contacts/{contactId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && matchesPath(userId, 'userId');
+        allow update: if isExistingOwner(userId) && matchesPath(userId, 'userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for ContactLists (groupings of contacts).
+       * @path /users/{userId}/contactLists/{contactListId}
+       * @allow (update) The owner can modify members or details of their list.
+       * @deny (create) If the userId field in the document does not match the path.
+       * @principle Ensures relational integrity between the list and its owner.
+       */
+      match /contactLists/{contactListId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && matchesPath(userId, 'userId');
+        allow update: if isExistingOwner(userId) && matchesPath(userId, 'userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for SMTP Configurations (credentials and host settings).
+       * @path /users/{userId}/smtpConfigurations/{smtpId}
+       * @allow (get) Only the owner can view their sensitive SMTP settings.
+       * @deny (delete) If the document does not exist.
+       * @principle Protects sensitive infrastructure credentials through strict ownership.
+       */
+      match /smtpConfigurations/{smtpId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && matchesPath(userId, 'userId');
+        allow update: if isExistingOwner(userId) && matchesPath(userId, 'userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for Email Campaigns.
+       * @path /users/{userId}/campaigns/{campaignId}
+       * @allow (create) Authenticated owner setting the correct userId.
+       * @deny (update) If user attempts to reassign the campaign to another user.
+       * @principle Enforces immutability of the owner relationship.
+       */
+      match /campaigns/{campaignId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && matchesPath(userId, 'userId');
+        allow update: if isExistingOwner(userId) && matchesPath(userId, 'userId');
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for Campaign Logs (records of sent emails).
+         * @path /users/{userId}/campaigns/{campaignId}/campaignLogs/{logId}
+         * @allow (list) Owner can view performance metrics of their campaign.
+         * @deny (create) If the log entry is not linked to the campaign owner's ID.
+         * @principle Deeply nested ownership verification using denormalized userId for performance.
+         */
+        match /campaignLogs/{logId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && matchesPath(userId, 'userId');
+          allow update: if isExistingOwner(userId) && matchesPath(userId, 'userId');
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+    }
+  }
+}
