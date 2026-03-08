@@ -3,6 +3,7 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History, Loader2, Target, ShieldCheck } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import {
