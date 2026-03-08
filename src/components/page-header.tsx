@@ -1,21 +1,34 @@
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
     title: string;
     description?: string;
     children?: ReactNode;
+    className?: string;
 }
 
-export default function PageHeader({ title, description, children }: PageHeaderProps) {
+export default function PageHeader({ title, description, children, className }: PageHeaderProps) {
     return (
-        <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-            <div className="grid gap-1">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
+        <div className={cn(
+            "mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center",
+            className
+        )}>
+            <div className="grid gap-1.5">
+                <h1 className="text-2xl font-black tracking-tight sm:text-3xl md:text-4xl text-foreground">
+                    {title}
+                </h1>
                 {description && (
-                    <p className="text-muted-foreground">{description}</p>
+                    <p className="text-sm md:text-base text-muted-foreground max-w-[600px] leading-relaxed">
+                        {description}
+                    </p>
                 )}
             </div>
-            {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+            {children && (
+                <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+                    {children}
+                </div>
+            )}
         </div>
     );
 }

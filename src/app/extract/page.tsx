@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useActionState, useState, useMemo } from "react";
@@ -69,6 +68,7 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebas
 import { collection, doc, addDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch } from "firebase/firestore";
 import type { Contact } from "@/lib/types";
 import { formatDistanceToNow, isToday, isWithinInterval, subDays, subMonths } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type ExtractedState = {
   contacts?: Omit<Contact, "id">[];
@@ -181,6 +181,8 @@ export default function ExtractPage() {
   const handleLoadSnapshot = (snapshot: any) => {
     setText(snapshot.text);
     toast({ title: "Snapshot Loaded" });
+    // Scroll to top on mobile to see the loaded text
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteSnapshot = (id: string) => {
@@ -194,7 +196,6 @@ export default function ExtractPage() {
 
     setIsLoading(true);
     try {
-      // 1. Create a new Contact List in Firestore
       const listName = `Extracted List - ${new Date().toLocaleDateString()}`;
       const batch = writeBatch(db);
       
@@ -244,13 +245,13 @@ export default function ExtractPage() {
   };
 
   return (
-    <div className="container mx-auto py-4 sm:py-8">
+    <div className="container mx-auto py-4 sm:py-8 px-4 sm:px-6 max-w-7xl">
       <PageHeader
         title="Extract Intelligence"
-        description="Paste raw data or upload files to identify unique leads."
+        description="Paste raw data or upload files to identify unique leads using AI."
       >
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mr-2 h-4 w-4" />
               Upload File
@@ -262,83 +263,94 @@ export default function ExtractPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card>
+          <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Source Data</CardTitle>
+              <CardTitle className="text-xl">Source Data</CardTitle>
+              <CardDescription>Input raw text for intelligent context-aware extraction.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={formAction}>
                 <div className="grid w-full gap-4">
                   <Textarea
                     name="text"
-                    placeholder="Paste email signatures, LinkedIn profiles, or mixed text here..."
-                    className="min-h-[300px] resize-y"
+                    placeholder="Paste email signatures, LinkedIn profiles, or mixed text blocks here..."
+                    className="min-h-[250px] sm:min-h-[350px] resize-y bg-muted/20 focus:bg-background transition-colors"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
-                  <Button type="submit" disabled={isPending || !text.trim()} className="w-full">
+                  <Button type="submit" disabled={isPending || !text.trim()} className="w-full h-12 text-base font-bold">
                     {isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Sparkles className="mr-2 h-4 w-4" />
                     )}
-                    {isPending ? "Processing with AI..." : "Intelligent Extraction"}
+                    {isPending ? "Processing Context..." : "Start AI Extraction"}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-border/50">
             <CardHeader>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <History className="h-5 w-5 text-primary" />
-                  <CardTitle>History</CardTitle>
+                  <CardTitle className="text-xl">History</CardTitle>
                 </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Search history..."
-                    className="w-[180px]"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search history..."
+                      className="pl-9 w-full sm:w-[200px]"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
                   <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Date" />
+                    <SelectTrigger className="w-full sm:w-[130px]">
+                      <SelectValue placeholder="All Time" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="all">All Time</SelectItem>
                       <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">Week</SelectItem>
+                      <SelectItem value="week">Past Week</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-0 sm:px-6">
               {parsesLoading ? (
-                <div className="flex h-[150px] items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                <div className="flex h-[200px] items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : filteredSnapshots.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-md border border-border/50 overflow-hidden">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead>Snapshot Title</TableHead>
-                        <TableHead className="hidden sm:table-cell">Recipients</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead className="font-bold">Title</TableHead>
+                        <TableHead className="hidden sm:table-cell font-bold">Leads</TableHead>
+                        <TableHead className="text-right font-bold">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredSnapshots.map((snapshot: any) => (
-                        <TableRow key={snapshot.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleLoadSnapshot(snapshot)}>
-                          <TableCell className="font-medium truncate max-w-[200px]">{snapshot.title}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{snapshot.emails?.length || 0}</TableCell>
+                        <TableRow key={snapshot.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => handleLoadSnapshot(snapshot)}>
+                          <TableCell className="font-medium truncate max-w-[150px] sm:max-w-none">
+                            {snapshot.title}
+                            <p className="sm:hidden text-[10px] text-muted-foreground">
+                              {snapshot.emails?.length || 0} leads found
+                            </p>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant="secondary" className="font-mono">{snapshot.emails?.length || 0}</Badge>
+                          </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteSnapshot(snapshot.id); }}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                            <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteSnapshot(snapshot.id); }}>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -347,8 +359,10 @@ export default function ExtractPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="p-12 text-center text-muted-foreground border border-dashed rounded-lg">
-                  <p>No previous extractions found.</p>
+                <div className="p-12 text-center text-muted-foreground border border-dashed rounded-xl">
+                  <History className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                  <p className="font-medium">No extraction history yet.</p>
+                  <p className="text-xs">Your successful AI extractions will appear here.</p>
                 </div>
               )}
             </CardContent>
@@ -356,78 +370,79 @@ export default function ExtractPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="sticky top-20">
+          <Card className="lg:sticky lg:top-20 border-primary/20 shadow-lg shadow-primary/5">
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
-                <CardTitle>Leads Found</CardTitle>
-                {state?.contacts && <Badge variant="secondary">{state.contacts.length}</Badge>}
+                <CardTitle className="text-xl">Leads Found</CardTitle>
+                {state?.contacts && <Badge variant="primary" className="font-mono">{state.contacts.length}</Badge>}
               </div>
               {state?.contacts && state.contacts.length > 0 && (
-                <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                <Button variant="ghost" size="icon" onClick={handleExportCSV} title="Download CSV">
                   <Download className="h-4 w-4" />
                 </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
               {isPending ? (
-                <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-center">
+                <div className="flex h-[350px] flex-col items-center justify-center gap-6 text-center animate-pulse">
                   <div className="relative">
-                     <Loader2 className="h-12 w-12 animate-spin text-primary opacity-20" />
-                     <Sparkles className="h-6 w-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                     <Loader2 className="h-16 w-16 animate-spin text-primary opacity-20" />
+                     <Sparkles className="h-8 w-8 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-bold">Analyzing Context</p>
-                    <p className="text-xs text-muted-foreground">Extracting names, companies, and roles...</p>
+                  <div className="space-y-2">
+                    <p className="text-lg font-black tracking-tight">AI is Analyzing</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest">Identifying roles & emails...</p>
                   </div>
                 </div>
               ) : state?.contacts ? (
                 <>
-                  <div className="h-[400px] overflow-auto rounded-md border bg-muted/30">
+                  <div className="h-[300px] sm:h-[400px] overflow-auto rounded-xl border border-border/50 bg-muted/10">
                     <Table>
-                      <TableHeader className="bg-muted sticky top-0 z-10">
+                      <TableHeader className="bg-muted/50 sticky top-0 z-10">
                         <TableRow>
-                          <TableHead className="text-[10px] uppercase">Identity</TableHead>
-                          <TableHead className="text-[10px] uppercase">Role</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase py-2">Identity</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase py-2">Org/Role</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {state.contacts.map((contact, index) => (
-                          <TableRow key={index} className="text-[11px]">
-                            <TableCell>
+                          <TableRow key={index} className="text-[11px] group">
+                            <TableCell className="py-2">
                               <div className="font-bold truncate max-w-[120px]">{contact.firstName} {contact.lastName}</div>
-                              <div className="text-muted-foreground truncate max-w-[120px]">{contact.email}</div>
+                              <div className="text-muted-foreground truncate max-w-[120px] font-mono">{contact.email}</div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-2">
                               <div className="font-medium truncate max-w-[100px]">{contact.company}</div>
-                              <div className="text-muted-foreground truncate max-w-[100px]">{contact.position}</div>
+                              <div className="text-muted-foreground truncate max-w-[100px] uppercase text-[9px]">{contact.position}</div>
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 pt-2">
                     <div className="flex gap-2">
                       <Input 
                         placeholder="Snapshot name..." 
                         value={snapshotTitle}
                         onChange={(e) => setSnapshotTitle(e.target.value)}
-                        className="flex-1"
+                        className="flex-1 h-10"
                       />
-                      <Button variant="secondary" size="icon" onClick={handleSaveSnapshot}>
+                      <Button variant="secondary" size="icon" className="h-10 w-10 shrink-0" onClick={handleSaveSnapshot}>
                         <Save className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button className="w-full font-bold" onClick={handleCreateCampaign}>
+                    <Button className="w-full h-12 text-base font-black shadow-lg shadow-primary/20" onClick={handleCreateCampaign}>
                       <Send className="mr-2 h-4 w-4" />
-                      Start Campaign
+                      Dispatch Campaign
                     </Button>
                   </div>
                 </>
               ) : (
-                <div className="flex h-[300px] flex-col items-center justify-center text-center p-6 border border-dashed rounded-lg opacity-40">
-                  <ExternalLink className="h-8 w-8 mb-4" />
-                  <p className="text-sm">Identify prospects by pasting data on the left.</p>
+                <div className="flex h-[350px] flex-col items-center justify-center text-center p-8 border border-dashed rounded-2xl bg-muted/5 opacity-50">
+                  <FileSpreadsheet className="h-12 w-12 mb-6 text-primary/30" />
+                  <p className="text-sm font-medium mb-1">Waiting for Context</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Paste your raw data in the editor to start the AI extraction process.</p>
                 </div>
               )}
             </CardContent>

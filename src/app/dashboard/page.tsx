@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -15,6 +14,7 @@ import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -67,79 +67,62 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-4 sm:py-8 max-w-7xl">
       <PageHeader
         title="Studio Insights"
         description={`Welcome back, ${user?.displayName || 'User'}. Your sender reputation is currently stable.`}
       />
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Audience</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Unique verified leads</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Intelligence</CardTitle>
-            <Target className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{parses?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Successful extractions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Outreach</CardTitle>
-            <Rocket className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{campaigns?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Managed campaigns</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delivery Trust</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats.total > 0 ? Math.round((stats.valid / stats.total) * 100) : 100}%
-            </div>
-            <p className="text-xs text-muted-foreground">Verified email percentage</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <StatCard 
+          title="Total Audience" 
+          value={stats.total.toLocaleString()} 
+          label="Unique verified leads" 
+          icon={<Users className="h-4 w-4 text-primary" />} 
+        />
+        <StatCard 
+          title="AI Intelligence" 
+          value={(parses?.length || 0).toString()} 
+          label="Successful extractions" 
+          icon={<Target className="h-4 w-4 text-accent" />} 
+        />
+        <StatCard 
+          title="Active Outreach" 
+          value={(campaigns?.length || 0).toString()} 
+          label="Managed campaigns" 
+          icon={<Rocket className="h-4 w-4 text-primary" />} 
+        />
+        <StatCard 
+          title="Delivery Trust" 
+          value={`${stats.total > 0 ? Math.round((stats.valid / stats.total) * 100) : 100}%`} 
+          label="Verified email percentage" 
+          icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} 
+          className="text-green-600"
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+        <Card className="lg:col-span-4 order-2 lg:order-1">
           <CardHeader>
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
-              <CardTitle>Audience Verification Status</CardTitle>
+              <CardTitle>Audience Health</CardTitle>
             </div>
-            <CardDescription>Real-time breakdown of your database health.</CardDescription>
+            <CardDescription>Real-time breakdown of your database verification status.</CardDescription>
           </CardHeader>
-          <CardContent className="h-[350px]">
+          <CardContent className="h-[300px] sm:h-[400px] pt-4">
             <ChartContainer config={chartConfig}>
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <XAxis 
                   dataKey="name" 
                   stroke="hsl(var(--muted-foreground))" 
-                  fontSize={12} 
+                  fontSize={10} 
                   tickLine={false} 
                   axisLine={false} 
                 />
                 <YAxis 
                    stroke="hsl(var(--muted-foreground))" 
-                   fontSize={12} 
+                   fontSize={10} 
                    tickLine={false} 
                    axisLine={false} 
                 />
@@ -154,49 +137,80 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card className="lg:col-span-3 order-1 lg:order-2">
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
               <CardTitle>Growth Strategy</CardTitle>
             </div>
-            <CardDescription>Optimization steps for your studio.</CardDescription>
+            <CardDescription>Optimization steps for your outreach studio.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-4">
              {stats.total > 0 && stats.valid / stats.total < 0.9 && (
-              <div className="flex items-start gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <div className="mt-1 rounded-full bg-amber-100 p-2 text-amber-600">
+              <div className="flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4">
+                <div className="mt-1 rounded-full bg-amber-100 dark:bg-amber-900 p-2 text-amber-600">
                   <AlertTriangle className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-amber-900">Cleaning Recommended</p>
-                  <p className="mt-1 text-xs text-amber-700">You have {stats.total - stats.valid} unverified contacts. Clean your list in the <Link href="/contacts" className="font-bold underline">Contacts Intelligence</Link> panel to avoid bounces.</p>
+                  <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Cleaning Recommended</p>
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">You have {stats.total - stats.valid} unverified contacts. Clean your list in the <Link href="/contacts" className="font-bold underline">Intelligence</Link> panel.</p>
                 </div>
               </div>
             )}
-            <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
-              <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary">
-                <Mail className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Ready for Launch</p>
-                <p className="mt-1 text-xs text-muted-foreground">You have {stats.valid} verified leads ready for immediate high-performance outreach.</p>
-                <Button size="sm" variant="link" asChild className="p-0 h-auto text-xs">
-                  <Link href="/campaigns/new">Draft Campaign</Link>
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
-              <div className="mt-1 rounded-full bg-accent/10 p-2 text-accent-foreground">
-                <Users className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Scale Audience</p>
-                <p className="mt-1 text-xs text-muted-foreground">Use the <Link href="/extract" className="font-bold underline">Extract tool</Link> to find more leads from your existing data sources.</p>
-              </div>
-            </div>
+            
+            <ActionCard 
+              icon={<Mail className="h-4 w-4" />}
+              title="Ready for Launch"
+              description={`You have ${stats.valid} verified leads ready for immediate high-performance outreach.`}
+              linkText="Draft Campaign"
+              href="/campaigns/new"
+            />
+            
+            <ActionCard 
+              icon={<Users className="h-4 w-4" />}
+              title="Scale Audience"
+              description="Use the AI Extract tool to find more qualified leads from your existing data sources."
+              linkText="Open Extractor"
+              href="/extract"
+              variant="accent"
+            />
           </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value, label, icon, className }: { title: string; value: string; label: string; icon: React.ReactNode; className?: string }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className={cn("text-2xl font-black", className)}>{value}</div>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionCard({ icon, title, description, linkText, href, variant = "primary" }: { icon: React.ReactNode; title: string; description: string; linkText: string; href: string; variant?: "primary" | "accent" }) {
+  return (
+    <div className="flex items-start gap-4 rounded-xl border p-4 transition-all hover:bg-muted/50 border-border/50">
+      <div className={cn(
+        "mt-1 rounded-full p-2",
+        variant === "primary" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent-foreground"
+      )}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-bold">{title}</p>
+        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{description}</p>
+        <Button size="sm" variant="link" asChild className="p-0 h-auto text-xs mt-2 font-bold">
+          <Link href={href}>{linkText} →</Link>
+        </Button>
       </div>
     </div>
   );
