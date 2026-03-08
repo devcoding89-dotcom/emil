@@ -10,7 +10,9 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Home,
+  FileText
 } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
@@ -19,9 +21,10 @@ import { doc } from "firebase/firestore";
 import { SheetClose } from '@/components/ui/sheet';
 
 const navLinks = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/extract', label: 'Extract Emails', icon: Mailbox },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/extract', label: 'Extract Intelligence', icon: Mailbox },
   { href: '/contacts', label: 'Contacts', icon: Users },
+  { href: '/templates', label: 'Templates', icon: FileText },
   { href: '/campaigns', label: 'Campaigns', icon: Send },
   { href: '/pricing', label: 'Elite Pricing', icon: CreditCard },
 ];
@@ -50,7 +53,22 @@ export function MobileNav() {
         </Link>
       </SheetClose>
       
-      {navLinks.map(({ href, label, icon: Icon }) => (
+      {!user && (
+        <SheetClose asChild>
+          <Link
+            href="/"
+            className={cn(
+              'flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground',
+              { 'text-foreground': pathname === '/' }
+            )}
+          >
+            <Home className="h-5 w-5" />
+            Home
+          </Link>
+        </SheetClose>
+      )}
+
+      {user && navLinks.map(({ href, label, icon: Icon }) => (
         <SheetClose asChild key={href}>
           <Link
             href={href}
@@ -58,8 +76,8 @@ export function MobileNav() {
               'flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground',
               {
                 'text-foreground':
-                  (href === '/' && pathname === '/') ||
-                  (href !== '/' && pathname.startsWith(href)),
+                  (href === '/dashboard' && pathname === '/dashboard') ||
+                  (href !== '/dashboard' && pathname.startsWith(href)),
               }
             )}
           >

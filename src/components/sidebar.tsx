@@ -17,7 +17,8 @@ import {
   Settings,
   ShieldCheck,
   FileText,
-  CreditCard
+  CreditCard,
+  Home
 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,7 @@ import { useDoc, useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 
 const navLinks = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/extract", label: "Extract Intelligence", icon: Mailbox },
   { href: "/contacts", label: "Contact Lists", icon: Users },
   { href: "/templates", label: "Email Templates", icon: FileText },
@@ -50,13 +51,32 @@ export function Sidebar() {
       <TooltipProvider>
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <Link
-            href="/"
+            href={user ? "/dashboard" : "/"}
             className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
           >
             <Icons.logo className="h-4 w-4 transition-all group-hover:scale-110" />
             <span className="sr-only">EmailCraft Studio</span>
           </Link>
-          {navLinks.map(({ href, label, icon: Icon }) => (
+
+          {!user && (
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <Link
+                   href="/"
+                   className={cn(
+                     "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                     { "bg-accent text-accent-foreground": pathname === "/" }
+                   )}
+                 >
+                   <Home className="h-5 w-5" />
+                   <span className="sr-only">Home</span>
+                 </Link>
+               </TooltipTrigger>
+               <TooltipContent side="right">Home</TooltipContent>
+             </Tooltip>
+          )}
+
+          {user && navLinks.map(({ href, label, icon: Icon }) => (
             <Tooltip key={href}>
               <TooltipTrigger asChild>
                 <Link
@@ -65,8 +85,8 @@ export function Sidebar() {
                     "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
                     {
                       "bg-accent text-accent-foreground":
-                        (href === "/" && pathname === "/") ||
-                        (href !== "/" && pathname.startsWith(href)),
+                        (href === "/dashboard" && pathname === "/dashboard") ||
+                        (href !== "/dashboard" && pathname.startsWith(href)),
                     }
                   )}
                 >

@@ -1,204 +1,210 @@
 
 "use client";
 
-import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History, Loader2, Target, ShieldCheck } from "lucide-react";
-import PageHeader from "@/components/page-header";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts";
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query } from "firebase/firestore";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { 
+  CheckCircle2, 
+  Mail, 
+  Zap, 
+  ShieldCheck, 
+  ArrowRight, 
+  Sparkles, 
+  Rocket, 
+  Users, 
+  BarChart3,
+  Mailbox
+} from "lucide-react";
+import { useUser } from "@/firebase";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from "@/components/ui/accordion";
 
-export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
-  const db = useFirestore();
+export default function LandingPage() {
+  const { user, loading } = useUser();
+  const router = useRouter();
 
-  const parsesQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return query(collection(db, "users", user.uid, "parses"));
-  }, [db, user]);
-
-  const campaignsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return query(collection(db, "users", user.uid, "campaigns"));
-  }, [db, user]);
-
-  const contactsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return query(collection(db, "users", user.uid, "contacts"));
-  }, [db, user]);
-
-  const { data: parses, isLoading: parsesLoading } = useCollection(parsesQuery);
-  const { data: campaigns, isLoading: campaignsLoading } = useCollection(campaignsQuery);
-  const { data: contacts, isLoading: contactsLoading } = useCollection(contactsQuery);
-
-  const stats = useMemo(() => {
-    if (!contacts) return { total: 0, valid: 0, invalid: 0 };
-    return {
-      total: contacts.length,
-      valid: contacts.filter(c => c.isValid).length,
-      invalid: contacts.filter(c => c.isValid === false).length,
-    };
-  }, [contacts]);
-
-  const chartData = useMemo(() => [
-    { name: "Verified", value: stats.valid, fill: "hsl(var(--primary))" },
-    { name: "Pending", value: stats.total - stats.valid - stats.invalid, fill: "hsl(var(--muted))" },
-    { name: "Flagged", value: stats.invalid, fill: "hsl(var(--destructive))" },
-  ], [stats]);
-
-  const chartConfig = {
-    value: { label: "Recipients" },
-  };
-
-  if (isUserLoading || parsesLoading || campaignsLoading || contactsLoading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, loading, router]);
 
   return (
-    <div className="container mx-auto py-8">
-      <PageHeader
-        title="Studio Insights"
-        description={`Welcome back, ${user?.displayName || 'User'}. Your sender reputation is currently stable.`}
-      />
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Audience</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Unique verified leads</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Intelligence</CardTitle>
-            <Target className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{parses?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Successful extractions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Outreach</CardTitle>
-            <Rocket className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{campaigns?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Managed campaigns</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delivery Trust</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats.total > 0 ? Math.round((stats.valid / stats.total) * 100) : 100}%
-            </div>
-            <p className="text-xs text-muted-foreground">Verified email percentage</p>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="flex flex-col min-h-screen">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden pt-20 pb-20 lg:pt-32 lg:pb-32">
+        <div className="container mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1 text-sm font-medium mb-8">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>AI-Powered Outreach for Modern Studios</span>
+          </div>
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl mb-6">
+            Extract Leads. <span className="text-primary">Verify </span> Accuracy. <br />
+            <span className="text-accent">Personalize</span> at Scale.
+          </h1>
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl mb-10">
+            EmailCraft Studio is the all-in-one workspace for identifying prospects from raw text, 
+            verifying deliverability, and launching hyper-personalized email campaigns in seconds.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button size="lg" className="h-12 px-8 text-lg" asChild>
+              <Link href="/signup">
+                Get Started for Free <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-12 px-8 text-lg" asChild>
+              <Link href="/pricing">View Elite Pricing</Link>
+            </Button>
+          </div>
+        </div>
+        
+        {/* Background Gradients */}
+        <div className="absolute top-0 -z-10 h-full w-full opacity-30 dark:opacity-20">
+          <div className="absolute top-1/2 left-1/4 h-96 w-96 -translate-y-1/2 rounded-full bg-primary blur-[120px]" />
+          <div className="absolute top-1/3 right-1/4 h-80 w-80 -translate-y-1/2 rounded-full bg-accent blur-[120px]" />
+        </div>
+      </section>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <CardTitle>Audience Verification Status</CardTitle>
-            </div>
-            <CardDescription>Real-time breakdown of your database health.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ChartContainer config={chartConfig}>
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <XAxis 
-                  dataKey="name" 
-                  stroke="hsl(var(--muted-foreground))" 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <YAxis 
-                   stroke="hsl(var(--muted-foreground))" 
-                   fontSize={12} 
-                   tickLine={false} 
-                   axisLine={false} 
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {/* Feature Grid */}
+      <section className="py-24 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold sm:text-4xl mb-4">Everything You Need to Scale</h2>
+            <p className="text-muted-foreground">Built for serious marketing teams who value precision and speed.</p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+            <FeatureCard 
+              icon={<Mailbox className="h-10 w-10 text-primary" />}
+              title="AI Extraction"
+              description="Paste raw text from LinkedIn, signatures, or lists. Our AI identifies names, roles, and emails instantly."
+            />
+            <FeatureCard 
+              icon={<ShieldCheck className="h-10 w-10 text-green-500" />}
+              title="MX Verification"
+              description="Auto-check mail server records to ensure your emails actually land in the inbox, not the void."
+            />
+            <FeatureCard 
+              icon={<Zap className="h-10 w-10 text-amber-500" />}
+              title="Dynamic Templates"
+              description="Use {{firstName}} and {{company}} tokens to personalize content for thousands of recipients automatically."
+            />
+            <FeatureCard 
+              icon={<Rocket className="h-10 w-10 text-primary" />}
+              title="Batch Dispatch"
+              description="Safe, rate-limited email delivery powered by industry-leading infrastructure. No SMTP setup required."
+            />
+          </div>
+        </div>
+      </section>
 
-        <Card className="col-span-3">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle>Growth Strategy</CardTitle>
-            </div>
-            <CardDescription>Optimization steps for your studio.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             {stats.total > 0 && stats.valid / stats.total < 0.9 && (
-              <div className="flex items-start gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <div className="mt-1 rounded-full bg-amber-100 p-2 text-amber-600">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-amber-900">Cleaning Recommended</p>
-                  <p className="mt-1 text-xs text-amber-700">You have {stats.total - stats.valid} unverified contacts. Clean your list in the <Link href="/contacts" className="font-bold underline">Contacts Intelligence</Link> panel to avoid bounces.</p>
-                </div>
-              </div>
-            )}
-            <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
-              <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary">
-                <Mail className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Ready for Launch</p>
-                <p className="mt-1 text-xs text-muted-foreground">You have {stats.valid} verified leads ready for immediate high-performance outreach.</p>
-                <Button size="sm" variant="link" asChild className="p-0 h-auto text-xs">
-                  <Link href="/campaigns/new">Draft Campaign</Link>
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
-              <div className="mt-1 rounded-full bg-accent/10 p-2 text-accent-foreground">
-                <Users className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Scale Audience</p>
-                <p className="mt-1 text-xs text-muted-foreground">Use the <Link href="/extract" className="font-bold underline">Extract tool</Link> to find more leads from your existing data sources.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* How it Works */}
+      <section className="py-24">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-16">Launch in 4 Steps</h2>
+          <div className="grid gap-12 lg:grid-cols-4 relative">
+            <div className="hidden lg:block absolute top-12 left-0 right-0 h-0.5 bg-muted -z-10" />
+            <Step 
+              number="1" 
+              title="Extract" 
+              description="Identify unique leads from raw text or CSV imports." 
+            />
+            <Step 
+              number="2" 
+              title="Verify" 
+              description="Clean your list with real-time domain verification." 
+            />
+            <Step 
+              number="3" 
+              title="Craft" 
+              description="Build reusable templates with personalization tags." 
+            />
+            <Step 
+              number="4" 
+              title="Dispatch" 
+              description="Hit send and track your campaign's live progress." 
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-24 bg-muted/20">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Is my data secure?</AccordionTrigger>
+              <AccordionContent>
+                Yes. Every account uses an isolated Firestore collection. Your contacts and campaigns are private and encrypted at rest.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>Do I need to connect my own email?</AccordionTrigger>
+              <AccordionContent>
+                No. EmailCraft Studio provides managed sending infrastructure. You just need to verify your business domain in Settings.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>How many emails can I send?</AccordionTrigger>
+              <AccordionContent>
+                The Free tier includes 50 AI extractions. Our Elite plan unlocks unlimited campaigns and high-volume sending limits.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="rounded-3xl bg-primary px-8 py-16 text-center text-primary-foreground shadow-2xl relative overflow-hidden">
+             <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+             <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            
+            <h2 className="text-3xl font-bold sm:text-5xl mb-6">Ready to scale your outreach?</h2>
+            <p className="mx-auto max-w-xl text-lg mb-10 opacity-90 text-primary-foreground/80">
+              Join hundreds of studios automating their sales intelligence and closing more deals today.
+            </p>
+            <Button size="lg" variant="secondary" className="h-14 px-10 text-xl font-bold" asChild>
+              <Link href="/signup">Create Your Free Account</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <footer className="py-12 border-t mt-auto">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>© {new Date().getFullYear()} EmailCraft Studio. All rights reserved. Proudly built for modern sales teams.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="p-8 rounded-2xl border bg-card hover:shadow-lg transition-shadow">
+      <div className="mb-4">{icon}</div>
+      <h3 className="text-xl font-bold mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function Step({ number, title, description }: { number: string; title: string; description: string }) {
+  return (
+    <div className="text-center relative">
+      <div className="mx-auto h-16 w-16 rounded-full bg-background border-4 border-primary flex items-center justify-center text-2xl font-black mb-6">
+        {number}
       </div>
+      <h3 className="text-xl font-bold mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }

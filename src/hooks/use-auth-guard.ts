@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@/firebase';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password'];
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/pricing'];
 
 export function useAuthGuard() {
   const { user, loading } = useUser();
