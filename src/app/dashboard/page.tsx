@@ -1,18 +1,19 @@
+
 "use client";
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, Loader2, Target, ShieldCheck } from "lucide-react";
+import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, Loader2, Target, ShieldCheck, TrendingUp } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, Cell, Line, LineChart, ResponsiveContainer } from "recharts";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +23,12 @@ export default function DashboardPage() {
 
   const parsesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
-    return query(collection(db, "users", user.uid, "parses"));
+    return query(collection(db, "users", user.uid, "parses"), orderBy("createdAt", "desc"), limit(5));
   }, [db, user]);
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
-    return query(collection(db, "users", user.uid, "campaigns"));
+    return query(collection(db, "users", user.uid, "campaigns"), orderBy("updatedAt", "desc"));
   }, [db, user]);
 
   const contactsQuery = useMemoFirebase(() => {
@@ -48,14 +49,33 @@ export default function DashboardPage() {
     };
   }, [contacts]);
 
+  const campaignMetrics = useMemo(() => {
+    if (!campaigns) return { totalSent: 0, totalFailed: 0 };
+    return campaigns.reduce((acc, curr) => ({
+      totalSent: acc.totalSent + (curr.sentCount || 0),
+      totalFailed: acc.totalFailed + (curr.failedCount || 0),
+    }), { totalSent: 0, totalFailed: 0 });
+  }, [campaigns]);
+
   const chartData = useMemo(() => [
     { name: "Verified", value: stats.valid, fill: "hsl(var(--primary))" },
     { name: "Pending", value: stats.total - stats.valid - stats.invalid, fill: "hsl(var(--muted))" },
     { name: "Flagged", value: stats.invalid, fill: "hsl(var(--destructive))" },
   ], [stats]);
 
+  const performanceData = useMemo(() => {
+    if (!campaigns) return [];
+    return campaigns.slice(0, 7).reverse().map(c => ({
+      name: c.name.substring(0, 10),
+      delivered: c.sentCount || 0,
+      failed: c.failedCount || 0,
+    }));
+  }, [campaigns]);
+
   const chartConfig = {
     value: { label: "Recipients" },
+    delivered: { label: "Delivered", color: "hsl(var(--primary))" },
+    failed: { label: "Failed", color: "hsl(var(--destructive))" },
   };
 
   if (isUserLoading || parsesLoading || campaignsLoading || contactsLoading) {
@@ -70,7 +90,7 @@ export default function DashboardPage() {
     <div className="container mx-auto py-4 sm:py-8 max-w-7xl">
       <PageHeader
         title="Studio Insights"
-        description={`Welcome back, ${user?.displayName || 'User'}. Your sender reputation is currently stable.`}
+        description={`Welcome back, ${user?.displayName || 'User'}. Tracking ${campaigns?.length || 0} active campaigns.`}
       />
       
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -81,53 +101,62 @@ export default function DashboardPage() {
           icon={<Users className="h-4 w-4 text-primary" />} 
         />
         <StatCard 
-          title="AI Intelligence" 
-          value={(parses?.length || 0).toString()} 
-          label="Successful extractions" 
-          icon={<Target className="h-4 w-4 text-accent" />} 
+          title="Successful Outreach" 
+          value={campaignMetrics.totalSent.toLocaleString()} 
+          label="Emails Delivered" 
+          icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} 
         />
         <StatCard 
-          title="Active Outreach" 
+          title="Active Campaigns" 
           value={(campaigns?.length || 0).toString()} 
           label="Managed campaigns" 
           icon={<Rocket className="h-4 w-4 text-primary" />} 
         />
         <StatCard 
-          title="Delivery Trust" 
-          value={`${stats.total > 0 ? Math.round((stats.valid / stats.total) * 100) : 100}%`} 
-          label="Verified email percentage" 
-          icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} 
-          className="text-green-600"
+          title="AI Intelligence" 
+          value={(parses?.length || 0).toString()} 
+          label="Recent Extractions" 
+          icon={<Target className="h-4 w-4 text-accent" />} 
         />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
-        <Card className="lg:col-span-4 order-2 lg:order-1">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-8">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <CardTitle>Audience Health</CardTitle>
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <CardTitle>Delivery Performance</CardTitle>
             </div>
-            <CardDescription>Real-time breakdown of your database verification status.</CardDescription>
+            <CardDescription>Outcome tracking across your most recent campaigns.</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px] sm:h-[400px] pt-4">
-            <ChartContainer config={chartConfig}>
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <XAxis 
-                  dataKey="name" 
-                  stroke="hsl(var(--muted-foreground))" 
-                  fontSize={10} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <YAxis 
-                   stroke="hsl(var(--muted-foreground))" 
-                   fontSize={10} 
-                   tickLine={false} 
-                   axisLine={false} 
-                />
+          <CardContent className="h-[350px] pt-4">
+             <ChartContainer config={chartConfig}>
+              <BarChart data={performanceData}>
+                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis fontSize={10} tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="delivered" fill="var(--color-delivered)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="failed" fill="var(--color-failed)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-4">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <CardTitle>Reputation Health</CardTitle>
+            </div>
+            <CardDescription>Overall database verification status.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[350px] pt-4">
+            <ChartContainer config={chartConfig}>
+              <BarChart data={chartData} layout="vertical">
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" fontSize={10} tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                    {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
@@ -137,43 +166,32 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3 order-1 lg:order-2">
+        <Card className="lg:col-span-12">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle>Growth Strategy</CardTitle>
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <CardTitle>Recent Activity</CardTitle>
             </div>
-            <CardDescription>Optimization steps for your outreach studio.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-             {stats.total > 0 && stats.valid / stats.total < 0.9 && (
-              <div className="flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4">
-                <div className="mt-1 rounded-full bg-amber-100 dark:bg-amber-900 p-2 text-amber-600">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Cleaning Recommended</p>
-                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">You have {stats.total - stats.valid} unverified contacts. Clean your list in the <Link href="/contacts" className="font-bold underline">Intelligence</Link> panel.</p>
-                </div>
-              </div>
-            )}
-            
-            <ActionCard 
-              icon={<Mail className="h-4 w-4" />}
-              title="Ready for Launch"
-              description={`You have ${stats.valid} verified leads ready for immediate high-performance outreach.`}
-              linkText="Draft Campaign"
-              href="/campaigns/new"
-            />
-            
-            <ActionCard 
-              icon={<Users className="h-4 w-4" />}
-              title="Scale Audience"
-              description="Use the AI Extract tool to find more qualified leads from your existing data sources."
-              linkText="Open Extractor"
-              href="/extract"
-              variant="accent"
-            />
+          <CardContent className="space-y-4 pt-0">
+             <div className="grid gap-4 md:grid-cols-3">
+               {campaigns?.slice(0, 3).map(c => (
+                 <div key={c.id} className="p-4 rounded-xl border bg-muted/20 flex flex-col gap-2">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold truncate pr-2">{c.name}</span>
+                      <Badge variant="secondary" className="text-[10px]">{c.status}</Badge>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-muted-foreground">Success Rate</span>
+                      <span className="font-mono">{c.totalCount ? Math.round((c.sentCount / c.totalCount) * 100) : 0}%</span>
+                    </div>
+                    <Progress value={c.totalCount ? (c.sentCount / c.totalCount) * 100 : 0} className="h-1" />
+                 </div>
+               ))}
+               {campaigns?.length === 0 && (
+                 <p className="col-span-3 text-center py-8 text-sm text-muted-foreground">No outreach activity recorded yet.</p>
+               )}
+             </div>
           </CardContent>
         </Card>
       </div>
@@ -183,7 +201,7 @@ export default function DashboardPage() {
 
 function StatCard({ title, value, label, icon, className }: { title: string; value: string; label: string; icon: React.ReactNode; className?: string }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-border/50">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon}
@@ -193,25 +211,5 @@ function StatCard({ title, value, label, icon, className }: { title: string; val
         <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1">{label}</p>
       </CardContent>
     </Card>
-  );
-}
-
-function ActionCard({ icon, title, description, linkText, href, variant = "primary" }: { icon: React.ReactNode; title: string; description: string; linkText: string; href: string; variant?: "primary" | "accent" }) {
-  return (
-    <div className="flex items-start gap-4 rounded-xl border p-4 transition-all hover:bg-muted/50 border-border/50">
-      <div className={cn(
-        "mt-1 rounded-full p-2",
-        variant === "primary" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent-foreground"
-      )}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-bold">{title}</p>
-        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{description}</p>
-        <Button size="sm" variant="link" asChild className="p-0 h-auto text-xs mt-2 font-bold">
-          <Link href={href}>{linkText} →</Link>
-        </Button>
-      </div>
-    </div>
   );
 }

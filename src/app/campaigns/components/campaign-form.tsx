@@ -30,12 +30,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import PageHeader from "@/components/page-header";
+import PageHeader from "@/page-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
-import type { Campaign, ContactList, SenderSettings, CampaignStatus } from "@/lib/types";
-import { draftCampaignContentAction, processBatchAction } from "@/lib/actions";
+import type { Campaign, ContactList, SenderSettings, CampaignStatus, Contact, EmailLog } from "@/lib/types";
+import { draftCampaignContentAction } from "@/lib/actions";
 import { 
   Loader2, 
   Wand2, 
@@ -47,11 +47,12 @@ import {
   Mail, 
   Save,
   Rocket,
-  FileText
+  FileText,
+  BarChart3
 } from "lucide-react";
 import Link from "next/link";
 import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy } from "firebase/firestore";
+import { doc, setDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, where, writeBatch } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { cn } from "@/lib/utils";
@@ -64,7 +65,6 @@ const campaignSchema = z.object({
   previewText: z.string().optional(),
   body: z.string().min(1, "Body content is required"),
   contactListId: z.string().nullable(),
-  scheduledAt: z.string().optional(),
   smartRateLimiting: z.boolean().default(true),
   pauseOnBounceThreshold: z.boolean().default(true),
 });
@@ -101,14 +101,12 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
 
   const { data: campaignData, loading: campaignLoading } = useDoc(campaignRef);
 
-  // Load Contact Lists
   const listsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "contactLists"), orderBy("createdAt", "desc"));
   }, [db, user]);
   const { data: contactLists } = useCollection<any>(listsQuery);
 
-  // Load Templates
   const templatesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "templates"), orderBy("createdAt", "desc"));
@@ -229,7 +227,8 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       return;
     }
 
-    updateDoc(campaignRef, {
+    // Set to sending status
+    await updateDoc(campaignRef, {
       status: "sending",
       sentCount: 0,
       failedCount: 0,
@@ -237,37 +236,59 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       updatedAt: serverTimestamp(),
     });
 
-    // Note: In a production app, we'd fetch actual contacts here.
-    // For this prototype, we simulate based on list count.
-    const totalContacts = selectedList.contactIds.length;
+    const contactIds = selectedList.contactIds;
     let totalSent = 0;
     let totalFailed = 0;
 
-    // Simulate batch processing
-    const batchSize = 25;
-    for (let i = 0; i < totalContacts; i += batchSize) {
-      await new Promise(r => setTimeout(r, 1000)); // Simulate work
+    // Process in batches of 10 for simulated progress
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
+      const currentBatchIds = contactIds.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
       
-      const chunk = Math.min(batchSize, totalContacts - totalSent - totalFailed);
-      const chunkSent = Math.floor(chunk * 0.95);
-      const chunkFailed = chunk - chunkSent;
+      // Fetch actual contact data for these IDs
+      const contactsSnap = await getDocs(query(
+        collection(db, "users", user.uid, "contacts"),
+        where("__name__", "in", currentBatchIds)
+      ));
 
-      totalSent += chunkSent;
-      totalFailed += chunkFailed;
+      contactsSnap.docs.forEach(docSnap => {
+        const contact = docSnap.data() as Contact;
+        const logRef = doc(collection(db, "users", user.uid, "campaigns", campaignId!, "logs"));
+        
+        // Simulating 98% success rate
+        const isSuccess = Math.random() < 0.98;
+        
+        const logData: EmailLog = {
+          id: logRef.id,
+          recipientEmail: contact.email,
+          recipientName: `${contact.firstName} ${contact.lastName}`,
+          status: isSuccess ? 'delivered' : 'failed',
+          error: isSuccess ? undefined : 'Mailbox full or temporarily unavailable',
+          sentAt: new Date().toISOString(),
+        };
 
-      updateDoc(campaignRef, {
+        batch.set(logRef, logData);
+        if (isSuccess) totalSent++; else totalFailed++;
+      });
+
+      // Update campaign progress
+      batch.update(campaignRef, {
         sentCount: totalSent,
         failedCount: totalFailed,
         updatedAt: serverTimestamp(),
       });
+
+      await batch.commit();
+      await new Promise(r => setTimeout(r, 500)); // Visual progress delay
     }
 
-    updateDoc(campaignRef, {
+    await updateDoc(campaignRef, {
       status: "completed",
       updatedAt: serverTimestamp(),
     });
 
-    toast({ title: "Dispatch Complete!", description: `Successfully processed ${totalContacts} recipients.` });
+    toast({ title: "Dispatch Complete!", description: `Successfully processed ${contactIds.length} recipients.` });
   };
 
   const selectedList = useMemo(() => 
@@ -276,6 +297,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
   );
 
   const isSending = campaignData?.status === "sending";
+  const isCompleted = campaignData?.status === "completed";
   const progress = campaignData?.totalCount 
     ? Math.round(((campaignData.sentCount + campaignData.failedCount) / campaignData.totalCount) * 100) 
     : 0;
@@ -307,12 +329,22 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
         title={campaignId ? "Campaign Builder" : "New Campaign"}
         description="Design and dispatch high-performance email outreach."
       >
-        <Button variant="ghost" asChild size="sm">
-          <Link href="/campaigns">
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Exit Builder
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+           {isCompleted && (
+             <Button variant="outline" size="sm" asChild>
+               <Link href={`/campaigns/${campaignId}/report`}>
+                 <BarChart3 className="mr-2 h-4 w-4" />
+                 View Report
+               </Link>
+             </Button>
+           )}
+          <Button variant="ghost" asChild size="sm">
+            <Link href="/campaigns">
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Exit Builder
+            </Link>
+          </Button>
+        </div>
       </PageHeader>
 
       <Form {...form}>
@@ -337,7 +369,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     <FormItem>
                       <FormLabel>Campaign Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Q1 Strategic Outreach" {...field} />
+                        <Input placeholder="e.g., Q1 Strategic Outreach" {...field} disabled={isSending} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -354,6 +386,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                           placeholder="Purpose of this campaign, target personas, etc." 
                           className="min-h-[80px]"
                           {...field} 
+                          disabled={isSending}
                         />
                       </FormControl>
                     </FormItem>
@@ -463,7 +496,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     <FormItem>
                       <FormLabel>Subject Line</FormLabel>
                       <FormControl>
-                        <Input placeholder="Personalized subject line..." {...field} />
+                        <Input placeholder="Personalized subject line..." {...field} disabled={isSending} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -476,7 +509,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     <FormItem>
                       <FormLabel>Preview Text (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Short summary displayed in inbox preview..." {...field} />
+                        <Input placeholder="Short summary displayed in inbox preview..." {...field} disabled={isSending} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -492,6 +525,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                           placeholder="Hi {{firstName}}, I noticed {{company}} is..."
                           className="min-h-[400px]"
                           {...field}
+                          disabled={isSending}
                         />
                       </FormControl>
                       <FormMessage />

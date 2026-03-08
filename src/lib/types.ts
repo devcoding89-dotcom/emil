@@ -12,7 +12,9 @@ export interface Contact {
 export interface ContactList {
   id: string;
   name: string;
-  contacts: Contact[];
+  contactIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SenderSettings {
@@ -49,6 +51,15 @@ export interface Campaign {
   pauseOnBounceThreshold: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EmailLog {
+  id: string;
+  recipientEmail: string;
+  recipientName: string;
+  status: 'delivered' | 'failed' | 'opened' | 'clicked';
+  error?: string;
+  sentAt: string;
 }
 
 export interface ExtractionSnapshot {
