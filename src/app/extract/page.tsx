@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useState, useMemo } from "react";
@@ -56,17 +57,15 @@ import {
   Send, 
   ExternalLink, 
   Download, 
-  FileJson, 
   FileSpreadsheet,
   Search,
   Filter,
-  UserCheck,
   Upload
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { useFirestore, useUser, useCollection } from "@/firebase";
+import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, addDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
 import type { ContactList, Contact } from "@/lib/types";
 import { formatDistanceToNow, isToday, isWithinInterval, subDays, subMonths } from "date-fns";
@@ -90,7 +89,7 @@ export default function ExtractPage() {
 
   const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
 
-  const parsesQuery = useMemo(() => {
+  const parsesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(
       collection(db, "users", user.uid, "parses"),

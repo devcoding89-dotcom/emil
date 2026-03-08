@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useActionState, useEffect, useState, useMemo } from "react";
+import { useActionState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -40,20 +40,16 @@ import {
   Loader2, 
   Wand2, 
   ChevronLeft, 
-  Info, 
-  AlertTriangle, 
   Globe, 
-  Zap, 
   ShieldCheck, 
   Layout, 
   Users, 
   Mail, 
-  Clock, 
   Save,
   Rocket
 } from "lucide-react";
 import Link from "next/link";
-import { useFirestore, useUser, useDoc } from "@/firebase";
+import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -98,7 +94,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     isSenderVerified: false,
   });
 
-  const campaignRef = useMemo(() => {
+  const campaignRef = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null;
     return doc(db, "users", user.uid, "campaigns", campaignId);
   }, [db, user, campaignId]);

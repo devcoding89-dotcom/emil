@@ -6,17 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlusCircle, Upload, Loader2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
-import type { ContactList, Contact } from "@/lib/types";
-import { useFirestore, useUser, useCollection } from "@/firebase";
+import type { Contact } from "@/lib/types";
+import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, doc, addDoc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 import { ContactListControls } from "./components/contact-list-controls";
 import { ContactsTable } from "./components/contacts-table";
 import { ContactForm } from "./components/contact-form";
 import { useToast } from "@/hooks/use-toast";
-import { validateEmailAction } from "@/lib/actions";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -27,7 +24,7 @@ export default function ContactsPage() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
-  const listsQuery = useMemo(() => {
+  const listsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(
       collection(db, "users", user.uid, "contactLists"),
@@ -37,7 +34,7 @@ export default function ContactsPage() {
 
   const { data: contactLists, isLoading: listsLoading } = useCollection<any>(listsQuery);
 
-  const contactsQuery = useMemo(() => {
+  const contactsQuery = useMemoFirebase(() => {
     if (!db || !user || !selectedListId) return null;
     return query(
       collection(db, "users", user.uid, "contacts"),
@@ -139,7 +136,6 @@ export default function ContactsPage() {
           updatedAt: new Date().toISOString(),
         });
       }
-      // Note: We keep the contact document in the master collection unless explicitly removed globally
       toast({ title: "Contact Removed from List" });
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: "Failed to remove contact." });

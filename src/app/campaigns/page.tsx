@@ -1,12 +1,11 @@
 
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
-import { useCollection, useFirestore, useUser } from "@/firebase";
+import { useCollection, useFirestore, useUser, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -17,7 +16,7 @@ export default function CampaignsPage() {
   const { user } = useUser();
   const db = useFirestore();
 
-  const campaignsQuery = useMemo(() => {
+  const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(
       collection(db, "users", user.uid, "campaigns"), 

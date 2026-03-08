@@ -10,26 +10,26 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, Cell, ResponsiveContainer } from "recharts";
-import { useFirestore, useUser, useCollection } from "@/firebase";
+import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts";
+import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
 
-  // Firestore Queries
-  const parsesQuery = useMemo(() => {
+  // Firestore Queries - properly memoized for useCollection
+  const parsesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "parses"));
   }, [db, user]);
 
-  const campaignsQuery = useMemo(() => {
+  const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "campaigns"));
   }, [db, user]);
 
-  const contactsQuery = useMemo(() => {
+  const contactsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "contacts"));
   }, [db, user]);

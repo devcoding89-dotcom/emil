@@ -1,7 +1,8 @@
+
 "use client";
 
-import { useMemo, useEffect } from "react";
-import { useCollection, useDoc, useUser, useFirestore } from "@/firebase";
+import { useEffect } from "react";
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, query, orderBy } from "firebase/firestore";
 import { 
   Card, 
@@ -36,14 +37,14 @@ export default function AdminPanelPage() {
   const { user, loading: authLoading } = useUser();
   const db = useFirestore();
 
-  const userProfileRef = useMemo(() => {
+  const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, "users", user.uid);
   }, [db, user]);
 
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
-  const usersQuery = useMemo(() => {
+  const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, "users"), orderBy("email"));
   }, [db]);
